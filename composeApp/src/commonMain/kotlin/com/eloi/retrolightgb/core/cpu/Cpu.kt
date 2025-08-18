@@ -36,6 +36,19 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
                 t += 4
                 m++
             }
+            0x0Cu -> {
+                c++
+                unsetFlag(FLAG_N)
+                if (c == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+                if (c and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+
+                if (isDebug)
+                    println("$${pc.toHexString()} INC C")
+
+                pc++
+                t += 4
+                m++
+            }
             0x0Eu -> {
                 c = memory.readByte((pc + 1u).toUShort())
 
