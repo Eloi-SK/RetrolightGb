@@ -32,28 +32,28 @@ class Memory {
             if (i % 16 == 0) {
                 sb.append("\n    0x${i.toHexString()}: ")
             }
-            sb.append("${ram[i].toInt()} ")
+            sb.append("${ram[i].toHexString()} ")
         }
         sb.append("\n  OAM content:")
         for (i in 0xFE00 until 0xFEA0) {
             if (i % 16 == 0) {
                 sb.append("\n    0x${i.toHexString()}: ")
             }
-            sb.append("${ram[i].toInt()} ")
+            sb.append("${ram[i].toHexString()} ")
         }
         sb.append("\n  IO RAM content:")
         for (i in 0xFF00 until 0xFF80) {
             if (i % 16 == 0) {
                 sb.append("\n    0x${i.toHexString()}: ")
             }
-            sb.append("${ram[i].toInt()} ")
+            sb.append("${ram[i].toHexString()} ")
         }
         sb.append("\n  H RAM content:")
         for (i in 0xFF80 .. 0xFFFF) {
             if (i % 16 == 0) {
                 sb.append("\n    0x${i.toHexString()}: ")
             }
-            sb.append("${ram[i].toInt()} ")
+            sb.append("${ram[i].toHexString()} ")
         }
         return sb.toString()
     }
