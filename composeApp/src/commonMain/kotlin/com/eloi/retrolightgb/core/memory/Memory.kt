@@ -1,10 +1,17 @@
 package com.eloi.retrolightgb.core.memory
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 @OptIn(ExperimentalUnsignedTypes::class)
 class Memory {
     private val ram = UByteArray(RAM_SIZE)
     private val bootRom: UByteArray = BootRom.data.map { byte -> byte.toUByte() }.toUByteArray()
     private var isBootRomEnabled = true
+
+    var dump by mutableStateOf(toString())
+        private set
 
     fun readByte(address: UShort): UByte {
         val addr = address.toInt()
@@ -21,26 +28,28 @@ class Memory {
             isBootRomEnabled = false
 
         ram[addr] = value
+
+        dump = toString()
     }
 
     override fun toString(): String {
         val sb = StringBuilder()
         sb.append("Memory Map:\n")
         sb.append("  Boot ROM enabled: $isBootRomEnabled\n")
-        sb.append("  VRAM content:")
-        for (i in 0x8000 until 0xA000) {
-            if (i % 16 == 0) {
-                sb.append("\n    0x${i.toHexString()}: ")
-            }
-            sb.append("${ram[i].toHexString()} ")
-        }
-        sb.append("\n  OAM content:")
-        for (i in 0xFE00 until 0xFEA0) {
-            if (i % 16 == 0) {
-                sb.append("\n    0x${i.toHexString()}: ")
-            }
-            sb.append("${ram[i].toHexString()} ")
-        }
+//        sb.append("  VRAM content:")
+//        for (i in 0x8000 until 0xA000) {
+//            if (i % 16 == 0) {
+//                sb.append("\n    0x${i.toHexString()}: ")
+//            }
+//            sb.append("${ram[i].toHexString()} ")
+//        }
+//        sb.append("\n  OAM content:")
+//        for (i in 0xFE00 until 0xFEA0) {
+//            if (i % 16 == 0) {
+//                sb.append("\n    0x${i.toHexString()}: ")
+//            }
+//            sb.append("${ram[i].toHexString()} ")
+//        }
         sb.append("\n  IO RAM content:")
         for (i in 0xFF00 until 0xFF80) {
             if (i % 16 == 0) {

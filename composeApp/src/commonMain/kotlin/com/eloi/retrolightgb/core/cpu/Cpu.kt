@@ -204,6 +204,19 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
                 t += 4
                 m++
             }
+            0xC5u -> {
+                sp--
+                memory.writeByte(sp, b)
+                sp--
+                memory.writeByte(sp, c)
+
+                if (isDebug)
+                    println("$${pc.toHexString()} PUSH BC")
+
+                pc++
+                t += 16
+                m += 4
+            }
             0xCBu -> {
                 val cbOpcode = memory.readByte((pc + 1u).toUShort())
                 cbPrefixStep(cbOpcode)
@@ -249,10 +262,7 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
                 t += 8
                 m += 2
             }
-            else -> {
-                println(memory.toString())
-                throw NotImplementedError("Opcode 0x${opcode.toHexString().uppercase()} not implemented")
-            }
+            else -> throw NotImplementedError("Opcode 0x${opcode.toHexString().uppercase()} not implemented")
         }
     }
 
