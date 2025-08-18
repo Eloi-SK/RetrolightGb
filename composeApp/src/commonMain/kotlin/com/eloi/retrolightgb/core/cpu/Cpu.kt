@@ -36,6 +36,16 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
                 t += 4
                 m++
             }
+            0x06u -> {
+                b = memory.readByte((pc + 1u).toUShort())
+
+                if (isDebug)
+                    println("$${pc.toHexString()} LD B, $${b.toHexString()}")
+
+                pc = (pc + 2u).toUShort()
+                t += 8
+                m += 2
+            }
             0x0Cu -> {
                 c++
                 unsetFlag(FLAG_N)
@@ -56,6 +66,31 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
                     println("$${pc.toHexString()} LD C, $${c.toHexString()}")
 
                 pc = (pc + 2u).toUShort()
+                t += 8
+                m += 2
+            }
+            0x11u -> {
+                val low = memory.readByte((pc + 1u).toUShort())
+                val high = memory.readByte((pc + 2u).toUShort())
+
+                val value = combinateBytes(high, low)
+                d = high
+                e = low
+
+                if (isDebug)
+                    println("$${pc.toHexString()} LD DE, $${value.toHexString()}")
+
+                pc = (pc + 3u).toUShort()
+                t += 12
+                m += 3
+            }
+            0x1Au -> {
+                a = memory.readByte(de)
+
+                if (isDebug)
+                    println("$${pc.toHexString()} LD A, (DE)")
+
+                pc++
                 t += 8
                 m += 2
             }
@@ -137,6 +172,26 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
                 t += 8
                 m += 2
             }
+            0x4Fu -> {
+                c = a
+
+                if (isDebug)
+                    println("$${pc.toHexString()} LD C, A")
+
+                pc++
+                t += 4
+                m++
+            }
+            0x77u -> {
+                memory.writeByte(hl, a)
+
+                if (isDebug)
+                    println("$${pc.toHexString()} LD (HL), A")
+
+                pc++
+                t += 8
+                m += 2
+            }
             0xAFu -> {
                 a = a xor a
                 resetFlags()
@@ -152,6 +207,36 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
             0xCBu -> {
                 val cbOpcode = memory.readByte((pc + 1u).toUShort())
                 cbPrefixStep(cbOpcode)
+            }
+            0xCDu -> {
+                val low = memory.readByte((pc + 1u).toUShort())
+                val high = memory.readByte((pc + 2u).toUShort())
+                val targetAddress = combinateBytes(high, low)
+                val returnAddress = (pc + 3u).toUShort()
+
+                sp--
+                memory.writeByte(sp, (returnAddress.toInt() shr 8).toUByte())
+                sp--
+                memory.writeByte(sp, (returnAddress.toInt() and 0xFF).toUByte())
+
+                if (isDebug)
+                    println("$${pc.toHexString()} CALL $${targetAddress.toHexString()}")
+
+                pc = targetAddress
+                t += 24
+                m += 6
+            }
+            0xE0u -> {
+                val value = memory.readByte((pc + 1u).toUShort())
+                val address = combinateBytes(high = 0xFFu, low = value)
+                memory.writeByte(address, a)
+
+                if(isDebug)
+                    println("$${pc.toHexString()} LD (\$FF00+$${value.toHexString()}), A")
+
+                pc = (pc + 2u).toUShort()
+                t += 12
+                m += 3
             }
             0xE2u -> {
                 val address = combinateBytes(high = 0xFFu, low = c)
