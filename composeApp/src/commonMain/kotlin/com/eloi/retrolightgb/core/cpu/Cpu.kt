@@ -196,6 +196,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xAFu to { xorARegister(registerName = "A", registerValue = a) },
         0x17u to ::rla,
         0xCDu to ::call,
+        0xC9u to ::ret,
         0x22u to ::loadHlIncA,
         0x32u to ::loadHlDecA,
         0x70u to { loadRegisterToHlAddress(registerName = "B", registerValue = b) },
@@ -449,6 +450,19 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         pc = targetAddress
         t += 24
         m += 6
+    }
+
+    private fun ret() {
+        val low = memory.readByte(sp)
+        sp++
+        val high = memory.readByte(sp)
+
+        if (isDebug)
+            println("$${pc.toHexString()} RET")
+
+        pc = combinateBytes(high, low)
+        t += 16
+        m += 4
     }
 
     private fun loadRegisterToRegister(reg1Name: String, reg2Name: String, reg2Value: UByte): UByte {
