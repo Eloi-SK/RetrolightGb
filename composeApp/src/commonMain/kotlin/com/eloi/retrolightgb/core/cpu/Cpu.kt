@@ -206,9 +206,21 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x74u to { loadRegisterToHlAddress(registerName = "H", registerValue = h) },
         0x75u to { loadRegisterToHlAddress(registerName = "L", registerValue = l) },
         0x77u to { loadRegisterToHlAddress(registerName = "A", registerValue = a) },
+        0x18u to ::jr,
         0x20u to ::jrNz,
+        0x28u to ::jrZ,
         0xE0u to ::loadFF00N8,
         0xE2u to ::loadFF00C,
+        0xEAu to ::loadN16A,
+        0xB8u to { cp(registerName = "B", registerValue = b) },
+        0xB9u to { cp(registerName = "C", registerValue = c) },
+        0xBAu to { cp(registerName = "D", registerValue = d) },
+        0xBBu to { cp(registerName = "E", registerValue = e) },
+        0xBCu to { cp(registerName = "H", registerValue = h) },
+        0xBDu to { cp(registerName = "L", registerValue = l) },
+        0xBFu to { cp(registerName = "A", registerValue = a) },
+        0xF0u to ::loadAFF00N8,
+        0xFEu to { cp() },
     )
 
     fun step() {
@@ -293,6 +305,21 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         m += 3
 
         return high to low
+    }
+
+    private fun loadN16A() {
+        val low = memory.readByte((pc + 1u).toUShort())
+        val high = memory.readByte((pc + 2u).toUShort())
+
+        val value = combinateBytes(high, low)
+        memory.writeByte(value, a)
+
+        if (isDebug)
+            println("$${pc.toHexString()} LD ($${value.toHexString()}), A")
+
+        pc = (pc + 3u).toUShort()
+        t += 16
+        m += 4
     }
 
     private fun loadSpN16() {
@@ -465,6 +492,41 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         m += 4
     }
 
+    private fun cp(registerName: String? = null, registerValue: UByte? = null) {
+        val isImmediate = registerName == null && registerValue == null
+        var result: UInt
+        if (registerName != null && registerValue != null) {
+            result = a - registerValue
+
+            if (isDebug)
+                println("$${pc.toHexString()} CP $registerName")
+        } else {
+            val value = memory.readByte((pc + 1u).toUShort())
+            result = a - value
+
+            if (isDebug)
+                println("$${pc.toHexString()} CP $${value.toHexString()}")
+        }
+
+        setFlag(FLAG_N)
+
+        if (result.toUByte() == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+
+        if (result.toUByte() and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+
+        if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
+
+        if (isImmediate) {
+            pc = (pc + 2u).toUShort()
+            t += 8
+            m += 2
+        } else {
+            pc++
+            t += 4
+            m++
+        }
+    }
+
     private fun loadRegisterToRegister(reg1Name: String, reg2Name: String, reg2Value: UByte): UByte {
         if (isDebug)
             println("$${pc.toHexString()} LD $reg1Name, $reg2Name")
@@ -526,6 +588,19 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         m += 2
     }
 
+    private fun loadAFF00N8() {
+        val value = memory.readByte((pc + 1u).toUShort())
+        val address = combinateBytes(high = 0xFFu, low = value)
+        a = memory.readByte(address)
+
+        if(isDebug)
+            println("$${pc.toHexString()} LD A, (\$FF00+$${value.toHexString()})")
+
+        pc = (pc + 2u).toUShort()
+        t += 12
+        m += 3
+    }
+
     private fun loadFF00N8() {
         val value = memory.readByte((pc + 1u).toUShort())
         val address = combinateBytes(high = 0xFFu, low = value)
@@ -551,19 +626,50 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         m += 2
     }
 
-    private fun jrNz() {
+    private fun jr() {
         val offset = memory.readByte((pc + 1u).toUShort()).toByte()
 
-        if (isFlagSet(FLAG_Z).not()) {
+        if (isDebug)
+            println("$${pc.toHexString()} JR, $${(pc.toInt() + 2 + offset.toInt()).toUShort().toHexString()}")
+
+        pc = (pc.toInt() + 2 + offset.toInt()).toUShort()
+        t += 12
+        m += 3
+    }
+
+    private fun jrZ() {
+        val offset = memory.readByte((pc + 1u).toUShort()).toByte()
+
+        if (isFlagSet(FLAG_Z)) {
             if (isDebug)
-                println("$${pc.toHexString()} JR NZ, $${(pc.toInt() + 2 + offset.toInt()).toUShort()}")
+                println("$${pc.toHexString()} JR Z, $${(pc.toInt() + 2 + offset.toInt()).toUShort().toHexString()}")
 
             pc = (pc.toInt() + 2 + offset.toInt()).toUShort()
             t += 12
             m += 3
         } else {
             if (isDebug)
-                println("$${pc.toHexString()} JR NZ, $${(pc + 2u).toUShort()}")
+                println("$${pc.toHexString()} JR Z, $${(pc + 2u).toUShort().toHexString()}")
+
+            pc = (pc + 2u).toUShort()
+            t += 8
+            m += 2
+        }
+    }
+
+    private fun jrNz() {
+        val offset = memory.readByte((pc + 1u).toUShort()).toByte()
+
+        if (isFlagSet(FLAG_Z).not()) {
+            if (isDebug)
+                println("$${pc.toHexString()} JR NZ, $${(pc.toInt() + 2 + offset.toInt()).toUShort().toHexString()}")
+
+            pc = (pc.toInt() + 2 + offset.toInt()).toUShort()
+            t += 12
+            m += 3
+        } else {
+            if (isDebug)
+                println("$${pc.toHexString()} JR NZ, $${(pc + 2u).toUShort().toHexString()}")
 
             pc = (pc + 2u).toUShort()
             t += 8
