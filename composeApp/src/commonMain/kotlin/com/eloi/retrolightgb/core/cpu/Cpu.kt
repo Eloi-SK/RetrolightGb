@@ -162,6 +162,13 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x24u to { h = incRegister(registerName = "H", registerValue = h) },
         0x2Cu to { l = incRegister(registerName = "L", registerValue = l) },
         0x3Cu to { a = incRegister(registerName = "A", registerValue = a) },
+        0x05u to { b = decRegister(registerName = "B", registerValue = b) },
+        0x0Du to { c = decRegister(registerName = "C", registerValue = c) },
+        0x15u to { d = decRegister(registerName = "D", registerValue = d) },
+        0x1Du to { e = decRegister(registerName = "E", registerValue = e) },
+        0x25u to { h = decRegister(registerName = "H", registerValue = h) },
+        0x2Du to { l = decRegister(registerName = "L", registerValue = l) },
+        0x3Du to { a = decRegister(registerName = "A", registerValue = a) },
         0x33u to ::incSp,
         0xC5u to { pushPairRegister(pairRegisterName = "BC", high = b, low = c) },
         0xD5u to { pushPairRegister(pairRegisterName = "DE", high = d, low = e) },
@@ -198,10 +205,13 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         if (opcode == 0xCBu.toUByte()) {
             val cbOpcode = memory.readByte((pc + 1u).toUShort())
             cbInstructions[cbOpcode.toUInt()]?.invoke()
-                ?: throw NotImplementedError("CB prefix opcode 0x${cbOpcode.toHexString().uppercase()} not implemented")
+                ?: throw NotImplementedError("CB prefix opcode 0x${cbOpcode.toHexString().uppercase()} " +
+                        "not implemented in PC 0x${pc.toHexString()}")
         } else {
             instructions[opcode.toUInt()]?.invoke()
-                ?: throw NotImplementedError("Opcode 0x${opcode.toHexString().uppercase()} not implemented")
+                ?: throw NotImplementedError(
+                    "Opcode 0x${opcode.toHexString().uppercase()} not implemented in PC 0x${pc.toHexString()}"
+                )
         }
     }
 
@@ -297,6 +307,22 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
         if (isDebug)
             println("$${pc.toHexString()} INC $registerName")
+
+        pc++
+        t += 4
+        m++
+
+        return newValue
+    }
+
+    private fun decRegister(registerName: String, registerValue: UByte): UByte {
+        val newValue = (registerValue - 1u).toUByte()
+        setFlag(FLAG_N)
+        if (newValue == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+        if (newValue and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+
+        if (isDebug)
+            println("$${pc.toHexString()} DEC $registerName")
 
         pc++
         t += 4
