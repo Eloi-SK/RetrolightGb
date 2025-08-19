@@ -1,5 +1,8 @@
 package com.eloi.retrolightgb.core.cpu
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.eloi.retrolightgb.core.memory.Memory
 import kotlin.reflect.KMutableProperty0
 
@@ -24,6 +27,9 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         get() = combinateBytes(b, c)
     val de: UShort
         get() = combinateBytes(d, e)
+
+    var registersDump by mutableStateOf(buildRegistersDump())
+    var flagsDump by mutableStateOf(buildFlagsDump())
 
     private val cbInstructions: Map<UInt, () -> Unit> = mapOf(
         0x10u to { b = rlRegister(registerName = "B", registerValue = b) },
@@ -169,6 +175,9 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x25u to { h = decRegister(registerName = "H", registerValue = h) },
         0x2Du to { l = decRegister(registerName = "L", registerValue = l) },
         0x3Du to { a = decRegister(registerName = "A", registerValue = a) },
+        0x03u to { incRegisterPair(pairName = "BC", pairValue = bc).destructureAssign(::b, ::c) },
+        0x13u to { incRegisterPair(pairName = "DE", pairValue = de).destructureAssign(::d, ::e) },
+        0x23u to { incRegisterPair(pairName = "HL", pairValue = hl).destructureAssign(::h, ::l) },
         0x33u to ::incSp,
         0xC5u to { pushPairRegister(pairRegisterName = "BC", high = b, low = c) },
         0xD5u to { pushPairRegister(pairRegisterName = "DE", high = d, low = e) },
@@ -187,6 +196,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xAFu to { xorARegister(registerName = "A", registerValue = a) },
         0x17u to ::rla,
         0xCDu to ::call,
+        0x22u to ::loadHlIncA,
         0x32u to ::loadHlDecA,
         0x70u to { loadRegisterToHlAddress(registerName = "B", registerValue = b) },
         0x71u to { loadRegisterToHlAddress(registerName = "C", registerValue = c) },
@@ -213,7 +223,16 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
                     "Opcode 0x${opcode.toHexString().uppercase()} not implemented in PC 0x${pc.toHexString()}"
                 )
         }
+        registersDump = buildRegistersDump()
+        flagsDump = buildFlagsDump()
     }
+
+    private fun buildRegistersDump(): String =
+        "A: 0x${a.toHexString()}, B: 0x${b.toHexString()}, C: 0x${c.toHexString()}, D: 0x${d.toHexString()}, " +
+                "E: 0x${e.toHexString()}, H: 0x${h.toHexString()}, L: 0x${l.toHexString()}"
+
+    private fun buildFlagsDump(): String =
+        "Z: ${isFlagSet(FLAG_Z)}, N: ${isFlagSet(FLAG_N)}, H: ${isFlagSet(FLAG_H)}, C: ${isFlagSet(FLAG_C)}"
 
     private fun combinateBytes(high: UByte, low: UByte): UShort =
         ((high.toUInt() shl 8) or low.toUInt()).toUShort()
@@ -297,6 +316,21 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         pc++
         t += 8
         m += 2
+    }
+
+    private fun incRegisterPair(pairName: String, pairValue: UShort): Pair<UByte, UByte> {
+        val newValue = pairValue + 1u
+        val high = (newValue shr 8).toUByte()
+        val low = (newValue and 0xFFu).toUByte()
+
+        if (isDebug)
+            println("$${pc.toHexString()} INC $pairName")
+
+        pc++
+        t += 8
+        m += 2
+
+        return high to low
     }
 
     private fun incRegister(registerName: String, registerValue: UByte): UByte {
@@ -444,6 +478,20 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
         if (isDebug)
             println("$${pc.toHexString()} LD A, ($pairName)")
+
+        pc++
+        t += 8
+        m += 2
+    }
+
+    private fun loadHlIncA() {
+        memory.writeByte(hl, a)
+        val inc = hl + 1u
+        h = (inc shr 8).toUByte()
+        l = (inc and 0xFFu).toUByte()
+
+        if (isDebug)
+            println("$${pc.toHexString()} LD (HL+), A")
 
         pc++
         t += 8
