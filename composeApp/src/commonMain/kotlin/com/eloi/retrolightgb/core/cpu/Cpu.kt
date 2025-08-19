@@ -25,7 +25,71 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     val de: UShort
         get() = combinateBytes(d, e)
 
-    private val cbInstructions: Map<UInt, () -> Unit> = mapOf()
+    private val cbInstructions: Map<UInt, () -> Unit> = mapOf(
+        0x10u to { b = rlRegister(registerName = "B", registerValue = b) },
+        0x11u to { c = rlRegister(registerName = "C", registerValue = c) },
+        0x12u to { d = rlRegister(registerName = "D", registerValue = d) },
+        0x13u to { e = rlRegister(registerName = "E", registerValue = e) },
+        0x14u to { h = rlRegister(registerName = "H", registerValue = h) },
+        0x15u to { l = rlRegister(registerName = "L", registerValue = l) },
+        0x17u to { a = rlRegister(registerName = "A", registerValue = a) },
+        0x40u to { bitNumberRegister(bit = 0, registerName = "B", registerValue = b) },
+        0x41u to { bitNumberRegister(bit = 0, registerName = "C", registerValue = c) },
+        0x42u to { bitNumberRegister(bit = 0, registerName = "D", registerValue = d) },
+        0x43u to { bitNumberRegister(bit = 0, registerName = "E", registerValue = e) },
+        0x44u to { bitNumberRegister(bit = 0, registerName = "H", registerValue = h) },
+        0x45u to { bitNumberRegister(bit = 0, registerName = "L", registerValue = l) },
+        0x47u to { bitNumberRegister(bit = 0, registerName = "A", registerValue = a) },
+        0x48u to { bitNumberRegister(bit = 1, registerName = "B", registerValue = b) },
+        0x49u to { bitNumberRegister(bit = 1, registerName = "C", registerValue = c) },
+        0x4Au to { bitNumberRegister(bit = 1, registerName = "D", registerValue = d) },
+        0x4Bu to { bitNumberRegister(bit = 1, registerName = "E", registerValue = e) },
+        0x4Cu to { bitNumberRegister(bit = 1, registerName = "H", registerValue = h) },
+        0x4Du to { bitNumberRegister(bit = 1, registerName = "L", registerValue = l) },
+        0x4Fu to { bitNumberRegister(bit = 1, registerName = "A", registerValue = a) },
+        0x50u to { bitNumberRegister(bit = 2, registerName = "B", registerValue = b) },
+        0x51u to { bitNumberRegister(bit = 2, registerName = "C", registerValue = c) },
+        0x52u to { bitNumberRegister(bit = 2, registerName = "D", registerValue = d) },
+        0x53u to { bitNumberRegister(bit = 2, registerName = "E", registerValue = e) },
+        0x54u to { bitNumberRegister(bit = 2, registerName = "H", registerValue = h) },
+        0x55u to { bitNumberRegister(bit = 2, registerName = "L", registerValue = l) },
+        0x57u to { bitNumberRegister(bit = 2, registerName = "A", registerValue = a) },
+        0x58u to { bitNumberRegister(bit = 3, registerName = "B", registerValue = b) },
+        0x59u to { bitNumberRegister(bit = 3, registerName = "C", registerValue = c) },
+        0x5Au to { bitNumberRegister(bit = 3, registerName = "D", registerValue = d) },
+        0x5Bu to { bitNumberRegister(bit = 3, registerName = "E", registerValue = e) },
+        0x5Cu to { bitNumberRegister(bit = 3, registerName = "H", registerValue = h) },
+        0x5Du to { bitNumberRegister(bit = 3, registerName = "L", registerValue = l) },
+        0x5Fu to { bitNumberRegister(bit = 3, registerName = "A", registerValue = a) },
+        0x60u to { bitNumberRegister(bit = 4, registerName = "B", registerValue = b) },
+        0x61u to { bitNumberRegister(bit = 4, registerName = "C", registerValue = c) },
+        0x62u to { bitNumberRegister(bit = 4, registerName = "D", registerValue = d) },
+        0x63u to { bitNumberRegister(bit = 4, registerName = "E", registerValue = e) },
+        0x64u to { bitNumberRegister(bit = 4, registerName = "H", registerValue = h) },
+        0x65u to { bitNumberRegister(bit = 4, registerName = "L", registerValue = l) },
+        0x67u to { bitNumberRegister(bit = 4, registerName = "A", registerValue = a) },
+        0x68u to { bitNumberRegister(bit = 5, registerName = "B", registerValue = b) },
+        0x69u to { bitNumberRegister(bit = 5, registerName = "C", registerValue = c) },
+        0x6Au to { bitNumberRegister(bit = 5, registerName = "D", registerValue = d) },
+        0x6Bu to { bitNumberRegister(bit = 5, registerName = "E", registerValue = e) },
+        0x6Cu to { bitNumberRegister(bit = 5, registerName = "H", registerValue = h) },
+        0x6Du to { bitNumberRegister(bit = 5, registerName = "L", registerValue = l) },
+        0x6Fu to { bitNumberRegister(bit = 5, registerName = "A", registerValue = a) },
+        0x70u to { bitNumberRegister(bit = 6, registerName = "B", registerValue = b) },
+        0x71u to { bitNumberRegister(bit = 6, registerName = "C", registerValue = c) },
+        0x72u to { bitNumberRegister(bit = 6, registerName = "D", registerValue = d) },
+        0x73u to { bitNumberRegister(bit = 6, registerName = "E", registerValue = e) },
+        0x74u to { bitNumberRegister(bit = 6, registerName = "H", registerValue = h) },
+        0x75u to { bitNumberRegister(bit = 6, registerName = "L", registerValue = l) },
+        0x77u to { bitNumberRegister(bit = 6, registerName = "A", registerValue = a) },
+        0x78u to { bitNumberRegister(bit = 7, registerName = "B", registerValue = b) },
+        0x79u to { bitNumberRegister(bit = 7, registerName = "C", registerValue = c) },
+        0x7Au to { bitNumberRegister(bit = 7, registerName = "D", registerValue = d) },
+        0x7Bu to { bitNumberRegister(bit = 7, registerName = "E", registerValue = e) },
+        0x7Cu to { bitNumberRegister(bit = 7, registerName = "H", registerValue = h) },
+        0x7Du to { bitNumberRegister(bit = 7, registerName = "L", registerValue = l) },
+        0x7Fu to { bitNumberRegister(bit = 7, registerName = "A", registerValue = a) },
+    )
     
     private val instructions: Map<UInt, () -> Unit> = mapOf(
         0x00u to ::nop,
@@ -134,49 +198,11 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         if (opcode == 0xCBu.toUByte()) {
             val cbOpcode = memory.readByte((pc + 1u).toUShort())
             cbInstructions[cbOpcode.toUInt()]?.invoke()
-                ?: cbPrefixStep(cbOpcode)
+                ?: throw NotImplementedError("CB prefix opcode 0x${cbOpcode.toHexString().uppercase()} not implemented")
         } else {
             instructions[opcode.toUInt()]?.invoke()
                 ?: throw NotImplementedError("Opcode 0x${opcode.toHexString().uppercase()} not implemented")
         }
-    }
-
-    private fun cbPrefixStep(cbOpcode: UByte) = when (cbOpcode.toUInt()) {
-        0x11u -> {
-            val oldValue = c
-            val oldCarry = if (isFlagSet(FLAG_C)) 1 else 0
-
-            val newCarry = (oldValue.toInt() shr 7) and 0x01
-            val result = ((oldValue.toInt() shl 1) or oldCarry) and 0xFF
-
-            c = result.toUByte()
-            if (newCarry == 0) unsetFlag(FLAG_C) else setFlag(FLAG_C)
-            if (result == 0) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-            unsetFlag(FLAG_N)
-            unsetFlag(FLAG_H)
-
-            if (isDebug)
-                println("$${pc.toHexString()} RL C")
-
-            pc = (pc + 2u).toUShort()
-            t += 8
-            m += 2
-        }
-        0x7Cu -> {
-            val bitValue = (h.toInt() shr 7) and 0x01
-
-            setFlag(FLAG_H)
-            unsetFlag(FLAG_N)
-            if (bitValue == 0) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-
-            if (isDebug)
-                println("$${pc.toHexString()} BIT 7, H")
-
-            pc = (pc + 2u).toUShort()
-            t += 8
-            m += 2
-        }
-        else -> throw NotImplementedError("CB prefix opcode 0x${cbOpcode.toHexString().uppercase()} not implemented")
     }
 
     private fun combinateBytes(high: UByte, low: UByte): UShort =
@@ -455,6 +481,44 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
             t += 8
             m += 2
         }
+    }
+
+    private fun rlRegister(registerName: String, registerValue: UByte): UByte {
+        val oldValue = registerValue
+        val oldCarry = if (isFlagSet(FLAG_C)) 1 else 0
+
+        val newCarry = (oldValue.toInt() shr 7) and 0x01
+        val result = ((oldValue.toInt() shl 1) or oldCarry) and 0xFF
+
+        result.toUByte()
+        if (newCarry == 0) unsetFlag(FLAG_C) else setFlag(FLAG_C)
+        if (result == 0) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+        unsetFlag(FLAG_N)
+        unsetFlag(FLAG_H)
+
+        if (isDebug)
+            println("$${pc.toHexString()} RL $registerName")
+
+        pc = (pc + 2u).toUShort()
+        t += 8
+        m += 2
+
+        return  result.toUByte()
+    }
+
+    private fun bitNumberRegister(bit: Int, registerName: String, registerValue: UByte) {
+        val bitValue = (registerValue.toInt() shr bit) and 0x01
+
+        setFlag(FLAG_H)
+        unsetFlag(FLAG_N)
+        if (bitValue == 0) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+
+        if (isDebug)
+            println("$${pc.toHexString()} BIT $bit, $registerName")
+
+        pc = (pc + 2u).toUShort()
+        t += 8
+        m += 2
     }
 
     companion object {
