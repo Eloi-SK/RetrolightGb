@@ -84,6 +84,29 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
                 t += 12
                 m += 3
             }
+            0x17u -> {
+                val oldCarryFlag = isFlagSet(FLAG_C)
+                val carryFlag = (0b1000_0000.toUInt() and a.toUInt()) != 0u
+
+                if (carryFlag) setFlag(FLAG_C) else unsetFlag(FLAG_C)
+
+                var result = a.toUInt() shl 1
+                result = result and 0b1111_1110.toUInt()
+
+                if (oldCarryFlag) result = result or 0b0000_0001.toUInt()
+
+                if (result == 0u) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+                unsetFlag(FLAG_N)
+                unsetFlag(FLAG_H)
+                a = result.toUByte()
+
+                if (isDebug)
+                    println("$${pc.toHexString()} RLA")
+
+                pc++
+                t += 4
+                m++
+            }
             0x1Au -> {
                 a = memory.readByte(de)
 
@@ -204,6 +227,21 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
                 t += 4
                 m++
             }
+            0xC1u -> {
+                val low = memory.readByte(sp)
+                val high = memory.readByte((sp + 1u).toUShort())
+
+                b = high
+                c = low
+
+                if (isDebug)
+                    println("$${pc.toHexString()} POP BC")
+
+                pc++
+                sp = (sp + 2u).toUShort()
+                t += 12
+                m += 3
+            }
             0xC5u -> {
                 sp--
                 memory.writeByte(sp, b)
@@ -267,6 +305,26 @@ class Cpu(private val memory: Memory, private val isDebug: Boolean = false) {
     }
 
     private fun cbPrefixStep(cbOpcode: UByte) = when (cbOpcode.toUInt()) {
+        0x11u -> {
+            val oldValue = c
+            val oldCarry = if (isFlagSet(FLAG_C)) 1 else 0
+
+            val newCarry = (oldValue.toInt() shr 7) and 0x01
+            val result = ((oldValue.toInt() shl 1) or oldCarry) and 0xFF
+
+            c = result.toUByte()
+            if (newCarry == 0) unsetFlag(FLAG_C) else setFlag(FLAG_C)
+            if (result == 0) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+            unsetFlag(FLAG_N)
+            unsetFlag(FLAG_H)
+
+            if (isDebug)
+                println("$${pc.toHexString()} RL C")
+
+            pc = (pc + 2u).toUShort()
+            t += 8
+            m += 2
+        }
         0x7Cu -> {
             val bitValue = (h.toInt() shr 7) and 0x01
 
