@@ -8,5 +8,5 @@ import org.kodein.di.instance
 
 val commonModule = DI.Module("common") {
     bindSingleton<Memory> { Memory() }
-    bindSingleton<Cpu> { Cpu(memory = instance()) }
+    bindSingleton<Cpu> { Cpu(memory = instance(), isDebug = true) }
 }

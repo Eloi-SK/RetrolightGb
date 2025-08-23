@@ -20,6 +20,8 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     var t: Int = 0
     var m: Int = 0
+    var lastT: Int = 0
+    var lastM: Int = 0
 
     val hl: UShort
         get() = combinateBytes(h, l)
@@ -221,9 +223,18 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xBFu to { cp(registerName = "A", registerValue = a) },
         0xF0u to ::loadAFF00N8,
         0xFEu to { cp() },
+        0x90u to { subRegister(registerName = "B", registerValue = b) },
+        0x91u to { subRegister(registerName = "C", registerValue = c) },
+        0x92u to { subRegister(registerName = "D", registerValue = d) },
+        0x93u to { subRegister(registerName = "E", registerValue = e) },
+        0x94u to { subRegister(registerName = "H", registerValue = h) },
+        0x95u to { subRegister(registerName = "L", registerValue = l) },
+        0x97u to { subRegister(registerName = "A", registerValue = a) },
     )
 
     fun step() {
+        lastT = t
+        lastM = m
         val opcode = memory.readByte(pc)
         if (opcode == 0xCBu.toUByte()) {
             val cbOpcode = memory.readByte((pc + 1u).toUShort())
@@ -713,6 +724,24 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         pc = (pc + 2u).toUShort()
         t += 8
         m += 2
+    }
+
+    private fun subRegister(registerName: String, registerValue: UByte) {
+        val result = a - registerValue
+
+        setFlag(FLAG_N)
+        if (result == 0u) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+        if (result and 0x0Fu == 0u) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+        if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
+
+        a = result.toUByte()
+
+        if (isDebug)
+            println("$${pc.toHexString()} SUB $registerName")
+
+        pc++
+        t += 4
+        m++
     }
 
     companion object {
