@@ -13,6 +13,12 @@ class Memory {
     var dump by mutableStateOf(toString())
         private set
 
+    fun load(rom: ByteArray) {
+        for (i in rom.indices) {
+            ram[i] = rom[i].toUByte()
+        }
+    }
+
     fun readByte(address: UShort): UByte {
         val addr = address.toInt()
         return when {
