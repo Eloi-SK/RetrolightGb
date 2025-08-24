@@ -231,6 +231,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x94u to { subRegister(registerName = "H", registerValue = h) },
         0x95u to { subRegister(registerName = "L", registerValue = l) },
         0x97u to { subRegister(registerName = "A", registerValue = a) },
+        0x86u to ::addHl,
     )
 
     fun step() {
@@ -557,6 +558,27 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
             t += 4
             m++
         }
+    }
+
+    private fun addHl() {
+        val value = memory.readByte(hl)
+        val result = a + value
+        a = result.toUByte()
+
+        if (result.toUByte() == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+
+        unsetFlag(FLAG_N)
+
+        if (result.toUByte() and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+
+        if (result.toInt() > 0xFF) setFlag(FLAG_C) else unsetFlag(FLAG_C)
+
+        if (isDebug)
+            println("$${pc.toHexString()} ADD HL, (HL)")
+
+        pc++
+        t += 8
+        m++
     }
 
     private fun loadRegisterToRegister(reg1Name: String, reg2Name: String, reg2Value: UByte): UByte {
