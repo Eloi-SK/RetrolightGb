@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.eloi.retrolightgb.core.cpu.Cpu
 import com.eloi.retrolightgb.core.memory.Memory
+import com.eloi.retrolightgb.core.ppu.Ppu
 import com.eloi.retrolightgb.di.LocalDI
 import com.eloi.retrolightgb.di.di
 import com.eloi.retrolightgb.di.rememberInstance
@@ -30,6 +31,7 @@ fun App() {
     CompositionLocalProvider(LocalDI provides di) {
         val memory = rememberInstance<Memory>()
         val cpu = rememberInstance<Cpu>()
+        val ppu = rememberInstance<Ppu>()
         val scope = rememberCoroutineScope()
 
         var showFilePicker by remember { mutableStateOf(false) }
@@ -55,6 +57,7 @@ fun App() {
                         scope.launch(Dispatchers.Default) {
                             while (true) {
                                 cpu.step()
+                                ppu.tick(cpu.t - cpu.lastT)
                             }
                         }
                         showFilePicker = false
