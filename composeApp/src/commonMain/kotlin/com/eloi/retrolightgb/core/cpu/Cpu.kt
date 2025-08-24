@@ -220,6 +220,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xBBu to { cp(registerName = "E", registerValue = e) },
         0xBCu to { cp(registerName = "H", registerValue = h) },
         0xBDu to { cp(registerName = "L", registerValue = l) },
+        0xBEu to ::cpHl,
         0xBFu to { cp(registerName = "A", registerValue = a) },
         0xF0u to ::loadAFF00N8,
         0xFEu to { cp() },
@@ -501,6 +502,26 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         pc = combinateBytes(high, low)
         t += 16
         m += 4
+    }
+
+    private fun cpHl() {
+        val value = memory.readByte(hl)
+        val result = a - value
+
+        setFlag(FLAG_N)
+
+        if (result.toUByte() == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+
+        if (result.toUByte() and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+
+        if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
+
+        if (isDebug)
+            println("$${pc.toHexString()} CP (HL)")
+
+        pc++
+        t += 8
+        m += 2
     }
 
     private fun cp(registerName: String? = null, registerValue: UByte? = null) {
