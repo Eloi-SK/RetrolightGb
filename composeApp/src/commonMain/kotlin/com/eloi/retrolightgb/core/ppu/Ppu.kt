@@ -3,6 +3,7 @@ package com.eloi.retrolightgb.core.ppu
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.eloi.retrolightgb.core.cpu.InterruptType
 import com.eloi.retrolightgb.core.memory.Memory
 
 class Ppu(private val memory: Memory) {
@@ -49,10 +50,21 @@ class Ppu(private val memory: Memory) {
                     if (currentLine == 144) {
                         mode = 1
                         setMode(1)
-                        requestInterrupt(1)
+                        memory.requestInterrupt(InterruptType.VBlank)
+
+                        val statRegister = memory.readByte(0xFF41u)
+                        if ((statRegister.toInt() and 0x10) != 0) {
+                            memory.requestInterrupt(InterruptType.LcdStat)
+                        }
+
                     } else {
                         mode = 2
                         setMode(2)
+
+                        val statRegister = memory.readByte(0xFF41u)
+                        if ((statRegister.toInt() and 0x20) != 0) {
+                            memory.requestInterrupt(InterruptType.LcdStat)
+                        }
                     }
                 }
             }
@@ -116,16 +128,7 @@ class Ppu(private val memory: Memory) {
             val bit = 7 - (xInBg % 8)
             val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
 
-            if (line == 80 && x < 10) {
-                println("tileId=$tileId, tileNum=$tileNum, data1=$data1, data2=$data2, colorId=$colorId")
-            }
-
             _frameBuffer[line][x] = colorId
         }
-    }
-
-    private fun requestInterrupt(bit: Int) {
-        val ifReg = memory.readByte(0xFF0Fu)
-        memory.writeByte(0xFF0Fu, (ifReg or (1 shl bit).toUByte()))
     }
 }

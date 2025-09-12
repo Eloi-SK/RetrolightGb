@@ -22,6 +22,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     var m: Int = 0
     var lastT: Int = 0
     var lastM: Int = 0
+    var imeEnabled: Boolean = false
 
     val hl: UShort
         get() = combinateBytes(h, l)
@@ -249,8 +250,41 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
                     "Opcode 0x${opcode.toHexString().uppercase()} not implemented in PC 0x${pc.toHexString()}"
                 )
         }
+        handleInterrupts()
         registersDump = buildRegistersDump()
         flagsDump = buildFlagsDump()
+    }
+
+    private fun handleInterrupts() {
+        if (imeEnabled) {
+            val ifReg = memory.readByte(0xFF0Fu)
+            val ieReg = memory.readByte(0xFFFFu)
+            val pendingAndEnabled = ifReg and ieReg
+
+            if (pendingAndEnabled == 0u.toUByte()) return
+
+            for (interrupt in InterruptType.getAllTypes()) {
+                if (pendingAndEnabled and interrupt.mask != 0u.toUByte()) {
+                    imeEnabled = false
+                    memory.clearInterruptRequest(interrupt)
+
+                    pushWordToStack(pc)
+                    pc = interrupt.address
+                    t += 20
+                    m += 5
+
+                    break
+                }
+            }
+        }
+    }
+
+    private fun pushWordToStack(value: UShort) {
+        val low = (value and 0xFFu).toUByte()
+        val high = ((value.toUInt() shr 8) and 0xFFu).toUByte()
+        memory.writeByte((sp - 1u).toUShort(), high)
+        memory.writeByte((sp - 2u).toUShort(), low)
+        sp = (sp - 2u).toUShort()
     }
 
     private fun buildRegistersDump(): String =
