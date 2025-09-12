@@ -15,74 +15,105 @@ class Ppu(private val memory: Memory) {
     var frameBuffer by mutableStateOf(_frameBuffer)
         private set
 
-    fun reset() {
-        scanLineCycles = 0
-        currentLine = 0
-        mode = 2
-        memory.writeByte(0xFF44u, 0u)
-    }
-
     fun tick(cycles: Int) {
-        scanLineCycles += cycles
+        var cyclesToProcess = cycles
 
-        when (mode) {
-            2 -> {
-                if (scanLineCycles >= 80) {
-                    scanLineCycles -= 80
-                    mode = 3
-                    setMode(3)
-                }
-            }
-            3 -> {
-                if (scanLineCycles >= 172) {
-                    scanLineCycles -= 172
-                    mode = 0
-                    setMode(0)
-                    renderScanLine(currentLine)
-                }
-            }
-            0 -> {
-                if (scanLineCycles >= 204) {
-                    scanLineCycles -= 204
-                    currentLine++
-                    memory.writeByte(0xFF44u, currentLine.toUByte())
-
-                    if (currentLine == 144) {
-                        mode = 1
-                        setMode(1)
-                        memory.requestInterrupt(InterruptType.VBlank)
-
-                        val statRegister = memory.readByte(0xFF41u)
-                        if ((statRegister.toInt() and 0x10) != 0) {
-                            memory.requestInterrupt(InterruptType.LcdStat)
-                        }
-
-                    } else {
-                        mode = 2
-                        setMode(2)
-
-                        val statRegister = memory.readByte(0xFF41u)
-                        if ((statRegister.toInt() and 0x20) != 0) {
-                            memory.requestInterrupt(InterruptType.LcdStat)
-                        }
-                    }
-                }
-            }
-            1 -> {
-                if (scanLineCycles >= 456) {
-                    scanLineCycles -= 456
-                    currentLine++
-                    memory.writeByte(0xFF44u, currentLine.toUByte())
-
-                    if (currentLine > 153) {
-                        currentLine = 0
-                        memory.writeByte(0xFF44u, 0u)
-                        mode = 2
-                        setMode(2)
-                    }
-                }
-            }
+        if (!isLcdEnabled()) {
+            scanLineCycles = 0
+            currentLine = 0
+            mode = 2
+            setMode(mode)
+            return
         }
+
+        while (cyclesToProcess > 0) {
+            var cyclesStep = 0
+            var completeMode = false
+
+            when (mode) {
+                2 -> {
+                    cyclesStep = 80 - scanLineCycles
+                    if (cyclesToProcess >= cyclesStep) {
+                        scanLineCycles = 0
+                        mode = 3
+                        setMode(mode)
+                        completeMode = true
+                    } else {
+                        scanLineCycles += cyclesToProcess
+                    }
+                }
+                3 -> {
+                    cyclesStep = 172 - scanLineCycles
+                    if (cyclesToProcess >= cyclesStep) {
+                        scanLineCycles = 0
+                        mode = 0
+                        setMode(mode)
+                        renderScanLine(currentLine)
+                        completeMode = true
+                    } else {
+                        scanLineCycles += cyclesToProcess
+                    }
+                }
+                0 -> {
+                    cyclesStep = 204 - scanLineCycles
+                    if (cyclesToProcess >= cyclesStep) {
+                        scanLineCycles = 0
+                        currentLine++
+                        memory.writeByte(0xFF44u, currentLine.toUByte())
+                        checkLyLycCoincidence()
+
+                        if (currentLine == 144) {
+                            mode = 1
+                            setMode(mode)
+                            memory.requestInterrupt(InterruptType.VBlank)
+
+                            val statRegister = memory.readByte(0xFF41u)
+                            if ((statRegister.toInt() and 0x10) != 0) {
+                                memory.requestInterrupt(InterruptType.LcdStat)
+                            }
+                        } else {
+                            mode = 2
+                            setMode(mode)
+
+                            val statRegister = memory.readByte(0xFF41u)
+                            if ((statRegister.toInt() and 0x20) != 0) {
+                                memory.requestInterrupt(InterruptType.LcdStat)
+                            }
+                        }
+                        completeMode = true
+                    } else {
+                        scanLineCycles += cyclesToProcess
+                    }
+                }
+                1 -> {
+                    cyclesStep = 456 - scanLineCycles
+                    if (cyclesToProcess >= cyclesStep) {
+                        scanLineCycles = 0
+                        currentLine++
+                        memory.writeByte(0xFF44u, currentLine.toUByte())
+                        checkLyLycCoincidence()
+
+                        if (currentLine > 153) {
+                            currentLine = 0
+                            memory.writeByte(0xFF44u, 0u)
+                            checkLyLycCoincidence()
+                            mode = 2
+                            setMode(mode)
+                        }
+                        completeMode = true
+                    } else {
+                        scanLineCycles += cyclesToProcess
+                    }
+                }
+            }
+
+            val cyclesConsumedInStep = if (completeMode) cyclesStep else cyclesToProcess
+            cyclesToProcess -= cyclesConsumedInStep
+
+            if (!completeMode && cyclesToProcess > 0)
+                cyclesToProcess = 0
+        }
+
         frameBuffer = _frameBuffer
     }
 
@@ -130,5 +161,27 @@ class Ppu(private val memory: Memory) {
 
             _frameBuffer[line][x] = colorId
         }
+    }
+
+    private fun checkLyLycCoincidence() {
+        val lyValue = currentLine.toUByte()
+        val lycValue = memory.readByte(0xFF45u)
+        var statValue = memory.readByte(0xFF41u)
+
+        if (lyValue == lycValue) {
+            statValue = (statValue.toInt() or 0x04).toUByte()
+
+            if ((statValue.toInt() and 0x40) != 0) {
+                memory.requestInterrupt(InterruptType.LcdStat)
+                println("PPU: LYC=LY Interrupt Requested (LY=${lyValue.toString(16)}, LYC=${lycValue.toString(16)})")
+            }
+        } else {
+            statValue = (statValue.toInt() and 0xFB.inv()).toUByte() // 0xFB é 11111011b
+        }
+        memory.writeByte(0xFF41u, statValue)
+    }
+
+    private fun isLcdEnabled(): Boolean {
+        return (memory.readByte(0xFF40u) and 0x80u) != 0u.toUByte()
     }
 }
