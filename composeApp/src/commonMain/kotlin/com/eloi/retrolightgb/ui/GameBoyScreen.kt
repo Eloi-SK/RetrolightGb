@@ -21,10 +21,10 @@ fun GameBoyScreen(
         frameBuffer.forEachIndexed { y, row ->
             row.forEachIndexed { x, colorId ->
                 val color = when (colorId) {
-                    0 -> Color(color = 0xFF000000)
-                    1 -> Color(color = 0xFF555555)
-                    2 -> Color(color = 0xFFAAAAAA)
-                    3 -> Color(color = 0xFFFFFFFF)
+                    0 -> Color(color = 0xFFFFFFFF)
+                    1 -> Color(color = 0xFFAAAAAA)
+                    2 -> Color(color = 0xFF555555)
+                    3 -> Color(color = 0xFF000000)
                     else -> Color.Green
                 }
 

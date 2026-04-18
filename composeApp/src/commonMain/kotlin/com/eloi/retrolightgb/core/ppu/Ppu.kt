@@ -66,6 +66,7 @@ class Ppu(private val memory: Memory) {
                             mode = 1
                             setMode(mode)
                             memory.requestInterrupt(InterruptType.VBlank)
+                            frameBuffer = Array(144) { _frameBuffer[it].copyOf() }
 
                             val statRegister = memory.readByte(0xFF41u)
                             if ((statRegister.toInt() and 0x10) != 0) {
@@ -113,8 +114,6 @@ class Ppu(private val memory: Memory) {
             if (!completeMode && cyclesToProcess > 0)
                 cyclesToProcess = 0
         }
-
-        frameBuffer = _frameBuffer
     }
 
     private fun setMode(mode: Int) {
@@ -159,7 +158,10 @@ class Ppu(private val memory: Memory) {
             val bit = 7 - (xInBg % 8)
             val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
 
-            _frameBuffer[line][x] = colorId
+            val bgp = memory.readByte(0xFF47u).toInt()
+            val shade = (bgp shr (colorId * 2)) and 0x03
+
+            _frameBuffer[line][x] = shade
         }
     }
 

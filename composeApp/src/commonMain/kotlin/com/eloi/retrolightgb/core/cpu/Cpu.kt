@@ -428,7 +428,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val newValue = (registerValue - 1u).toUByte()
         setFlag(FLAG_N)
         if (newValue == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-        if (newValue and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+        if (registerValue and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
 
         if (isDebug)
             println("$${pc.toHexString()} DEC $registerName")
@@ -494,7 +494,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
         if (oldCarryFlag) result = result or 0b0000_0001.toUInt()
 
-        if (result == 0u) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+        unsetFlag(FLAG_Z)
         unsetFlag(FLAG_N)
         unsetFlag(FLAG_H)
         a = result.toUByte()
@@ -528,8 +528,8 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     private fun ret() {
         val low = memory.readByte(sp)
-        sp++
-        val high = memory.readByte(sp)
+        val high = memory.readByte((sp + 1u).toUShort())
+        sp = (sp + 2u).toUShort()
 
         if (isDebug)
             println("$${pc.toHexString()} RET")
