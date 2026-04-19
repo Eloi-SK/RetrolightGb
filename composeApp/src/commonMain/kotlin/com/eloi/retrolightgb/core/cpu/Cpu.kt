@@ -102,12 +102,44 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     
     private val instructions: Map<UInt, () -> Unit> = mapOf(
         0x00u to ::nop,
+        0x01u to { loadPairRegisterN16(pairRegisterName = "BC").destructureAssign(::b, ::c) },
+        0x03u to { incRegisterPair(pairName = "BC", pairValue = bc).destructureAssign(::b, ::c) },
+        0x04u to { b = incRegister(registerName = "B", registerValue = b) },
+        0x05u to { b = decRegister(registerName = "B", registerValue = b) },
         0x06u to { b = loadRegisterN8(registerName = "B") },
+        0x0Au to { loadPairRegisterAddressToA(pairName = "BC", pairValue = bc) },
+        0x0Cu to { c = incRegister(registerName = "C", registerValue = c) },
+        0x0Du to { c = decRegister(registerName = "C", registerValue = c) },
         0x0Eu to { c = loadRegisterN8(registerName = "C") },
+        0x11u to { loadPairRegisterN16(pairRegisterName = "DE").destructureAssign(::d, ::e) },
+        0x13u to { incRegisterPair(pairName = "DE", pairValue = de).destructureAssign(::d, ::e) },
+        0x14u to { d = incRegister(registerName = "D", registerValue = d) },
+        0x15u to { d = decRegister(registerName = "D", registerValue = d) },
         0x16u to { d = loadRegisterN8(registerName = "D") },
+        0x17u to ::rla,
+        0x18u to ::jr,
+        0x1Au to { loadPairRegisterAddressToA(pairName = "DE", pairValue = de) },
+        0x1Cu to { e = incRegister(registerName = "E", registerValue = e) },
+        0x1Du to { e = decRegister(registerName = "E", registerValue = e) },
         0x1Eu to { e = loadRegisterN8(registerName = "E") },
+        0x20u to ::jrNz,
+        0x21u to { loadPairRegisterN16(pairRegisterName = "HL").destructureAssign(::h, ::l) },
+        0x22u to ::loadHlIncA,
+        0x23u to { incRegisterPair(pairName = "HL", pairValue = hl).destructureAssign(::h, ::l) },
+        0x24u to { h = incRegister(registerName = "H", registerValue = h) },
+        0x25u to { h = decRegister(registerName = "H", registerValue = h) },
         0x26u to { h = loadRegisterN8(registerName = "H") },
+        0x28u to ::jrZ,
+        0x2Au to ::loadAHlInc,
+        0x2Cu to { l = incRegister(registerName = "L", registerValue = l) },
+        0x2Du to { l = decRegister(registerName = "L", registerValue = l) },
         0x2Eu to { l = loadRegisterN8(registerName = "L") },
+        0x31u to ::loadSpN16,
+        0x32u to ::loadHlDecA,
+        0x33u to ::incSp,
+        0x36u to ::ldHLN8,
+        0x3Cu to { a = incRegister(registerName = "A", registerValue = a) },
+        0x3Du to { a = decRegister(registerName = "A", registerValue = a) },
         0x3Eu to { a = loadRegisterN8(registerName = "A") },
         0x40u to { b = loadRegisterToRegister(reg1Name = "B", reg2Name = "B", reg2Value = b) },
         0x41u to { b = loadRegisterToRegister(reg1Name = "B", reg2Name = "C", reg2Value = c) },
@@ -151,57 +183,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x6Cu to { l = loadRegisterToRegister(reg1Name = "L", reg2Name = "H", reg2Value = h) },
         0x6Du to { l = loadRegisterToRegister(reg1Name = "L", reg2Name = "L", reg2Value = l) },
         0x6Fu to { l = loadRegisterToRegister(reg1Name = "L", reg2Name = "A", reg2Value = a) },
-        0x78u to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "B", reg2Value = b) },
-        0x79u to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "C", reg2Value = c) },
-        0x7Au to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "D", reg2Value = d) },
-        0x7Bu to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "E", reg2Value = e) },
-        0x7Cu to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "H", reg2Value = h) },
-        0x7Du to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "L", reg2Value = l) },
-        0x7Fu to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "A", reg2Value = a) },
-        0x01u to { loadPairRegisterN16(pairRegisterName = "BC").destructureAssign(::b, ::c) },
-        0x11u to { loadPairRegisterN16(pairRegisterName = "DE").destructureAssign(::d, ::e) },
-        0x21u to { loadPairRegisterN16(pairRegisterName = "HL").destructureAssign(::h, ::l) },
-        0x0Au to { loadPairRegisterAddressToA(pairName = "BC", pairValue = bc) },
-        0x1Au to { loadPairRegisterAddressToA(pairName = "DE", pairValue = de) },
-        0x31u to ::loadSpN16,
-        0x04u to { b = incRegister(registerName = "B", registerValue = b) },
-        0x0Cu to { c = incRegister(registerName = "C", registerValue = c) },
-        0x14u to { d = incRegister(registerName = "D", registerValue = d) },
-        0x1Cu to { e = incRegister(registerName = "E", registerValue = e) },
-        0x24u to { h = incRegister(registerName = "H", registerValue = h) },
-        0x2Cu to { l = incRegister(registerName = "L", registerValue = l) },
-        0x3Cu to { a = incRegister(registerName = "A", registerValue = a) },
-        0x05u to { b = decRegister(registerName = "B", registerValue = b) },
-        0x0Du to { c = decRegister(registerName = "C", registerValue = c) },
-        0x15u to { d = decRegister(registerName = "D", registerValue = d) },
-        0x1Du to { e = decRegister(registerName = "E", registerValue = e) },
-        0x25u to { h = decRegister(registerName = "H", registerValue = h) },
-        0x2Du to { l = decRegister(registerName = "L", registerValue = l) },
-        0x3Du to { a = decRegister(registerName = "A", registerValue = a) },
-        0x03u to { incRegisterPair(pairName = "BC", pairValue = bc).destructureAssign(::b, ::c) },
-        0x13u to { incRegisterPair(pairName = "DE", pairValue = de).destructureAssign(::d, ::e) },
-        0x23u to { incRegisterPair(pairName = "HL", pairValue = hl).destructureAssign(::h, ::l) },
-        0x33u to ::incSp,
-        0xC5u to { pushPairRegister(pairRegisterName = "BC", high = b, low = c) },
-        0xD5u to { pushPairRegister(pairRegisterName = "DE", high = d, low = e) },
-        0xE5u to { pushPairRegister(pairRegisterName = "HL", high = h, low = l) },
-        0xF5u to { pushPairRegister(pairRegisterName = "AF", high = a, low = f) },
-        0xC1u to { popPairRegister(pairRegisterName = "BC").destructureAssign(::b, ::c) },
-        0xD1u to { popPairRegister(pairRegisterName = "DE").destructureAssign(::d, ::e) },
-        0xE1u to { popPairRegister(pairRegisterName = "HL").destructureAssign(::h, ::l) },
-        0xF1u to { popPairRegister(pairRegisterName = "AF").destructureAssign(::a, ::f) },
-        0xA8u to { xorARegister(registerName = "B", registerValue = b) },
-        0xA9u to { xorARegister(registerName = "C", registerValue = c) },
-        0xAAu to { xorARegister(registerName = "D", registerValue = d) },
-        0xABu to { xorARegister(registerName = "E", registerValue = e) },
-        0xACu to { xorARegister(registerName = "H", registerValue = h) },
-        0xADu to { xorARegister(registerName = "L", registerValue = l) },
-        0xAFu to { xorARegister(registerName = "A", registerValue = a) },
-        0x17u to ::rla,
-        0xCDu to ::call,
-        0xC9u to ::ret,
-        0x22u to ::loadHlIncA,
-        0x32u to ::loadHlDecA,
         0x70u to { loadRegisterToHlAddress(registerName = "B", registerValue = b) },
         0x71u to { loadRegisterToHlAddress(registerName = "C", registerValue = c) },
         0x72u to { loadRegisterToHlAddress(registerName = "D", registerValue = d) },
@@ -209,12 +190,28 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x74u to { loadRegisterToHlAddress(registerName = "H", registerValue = h) },
         0x75u to { loadRegisterToHlAddress(registerName = "L", registerValue = l) },
         0x77u to { loadRegisterToHlAddress(registerName = "A", registerValue = a) },
-        0x18u to ::jr,
-        0x20u to ::jrNz,
-        0x28u to ::jrZ,
-        0xE0u to ::loadFF00N8,
-        0xE2u to ::loadFF00C,
-        0xEAu to ::loadN16A,
+        0x78u to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "B", reg2Value = b) },
+        0x79u to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "C", reg2Value = c) },
+        0x7Au to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "D", reg2Value = d) },
+        0x7Bu to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "E", reg2Value = e) },
+        0x7Cu to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "H", reg2Value = h) },
+        0x7Du to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "L", reg2Value = l) },
+        0x7Fu to { a = loadRegisterToRegister(reg1Name = "A", reg2Name = "A", reg2Value = a) },
+        0x86u to ::addHl,
+        0x90u to { subRegister(registerName = "B", registerValue = b) },
+        0x91u to { subRegister(registerName = "C", registerValue = c) },
+        0x92u to { subRegister(registerName = "D", registerValue = d) },
+        0x93u to { subRegister(registerName = "E", registerValue = e) },
+        0x94u to { subRegister(registerName = "H", registerValue = h) },
+        0x95u to { subRegister(registerName = "L", registerValue = l) },
+        0x97u to { subRegister(registerName = "A", registerValue = a) },
+        0xA8u to { xorARegister(registerName = "B", registerValue = b) },
+        0xA9u to { xorARegister(registerName = "C", registerValue = c) },
+        0xAAu to { xorARegister(registerName = "D", registerValue = d) },
+        0xABu to { xorARegister(registerName = "E", registerValue = e) },
+        0xACu to { xorARegister(registerName = "H", registerValue = h) },
+        0xADu to { xorARegister(registerName = "L", registerValue = l) },
+        0xAFu to { xorARegister(registerName = "A", registerValue = a) },
         0xB8u to { cp(registerName = "B", registerValue = b) },
         0xB9u to { cp(registerName = "C", registerValue = c) },
         0xBAu to { cp(registerName = "D", registerValue = d) },
@@ -223,16 +220,23 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xBDu to { cp(registerName = "L", registerValue = l) },
         0xBEu to ::cpHl,
         0xBFu to { cp(registerName = "A", registerValue = a) },
+        0xC1u to { popPairRegister(pairRegisterName = "BC").destructureAssign(::b, ::c) },
+        0xC3u to ::jpA16,
+        0xC5u to { pushPairRegister(pairRegisterName = "BC", high = b, low = c) },
+        0xC9u to ::ret,
+        0xCDu to ::call,
+        0xD1u to { popPairRegister(pairRegisterName = "DE").destructureAssign(::d, ::e) },
+        0xD5u to { pushPairRegister(pairRegisterName = "DE", high = d, low = e) },
+        0xE0u to ::loadFF00N8,
+        0xE1u to { popPairRegister(pairRegisterName = "HL").destructureAssign(::h, ::l) },
+        0xE2u to ::loadFF00C,
+        0xE5u to { pushPairRegister(pairRegisterName = "HL", high = h, low = l) },
+        0xEAu to ::loadN16A,
         0xF0u to ::loadAFF00N8,
+        0xF1u to { popPairRegister(pairRegisterName = "AF").destructureAssign(::a, ::f) },
+        0xF3u to ::di,
+        0xF5u to { pushPairRegister(pairRegisterName = "AF", high = a, low = f) },
         0xFEu to { cp() },
-        0x90u to { subRegister(registerName = "B", registerValue = b) },
-        0x91u to { subRegister(registerName = "C", registerValue = c) },
-        0x92u to { subRegister(registerName = "D", registerValue = d) },
-        0x93u to { subRegister(registerName = "E", registerValue = e) },
-        0x94u to { subRegister(registerName = "H", registerValue = h) },
-        0x95u to { subRegister(registerName = "L", registerValue = l) },
-        0x97u to { subRegister(registerName = "A", registerValue = a) },
-        0x86u to ::addHl,
     )
 
     fun step() {
@@ -723,6 +727,56 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         pc = (pc.toInt() + 2 + offset.toInt()).toUShort()
         t += 12
         m += 3
+    }
+
+    private fun jpA16() {
+        val low = memory.readByte((pc + 1u).toUShort())
+        val high = memory.readByte((pc + 2u).toUShort())
+        val targetAddress = combinateBytes(high, low)
+
+        if (isDebug)
+            println("$${pc.toHexString()} JP $${targetAddress.toHexString()}")
+
+        pc = targetAddress
+        t += 16
+        m += 4
+    }
+
+    private fun di() {
+        if (isDebug)
+            println("$${pc.toHexString()} DI")
+
+        imeEnabled = false
+        pc++
+        t += 4
+        m++
+    }
+
+    private fun ldHLN8() {
+        val value = memory.readByte((pc + 1u).toUShort())
+        memory.writeByte(hl, value)
+
+        if (isDebug)
+            println("$${pc.toHexString()} LD (HL), $${value.toHexString()}")
+
+        pc = (pc + 2u).toUShort()
+        t += 12
+        m += 3
+    }
+
+    private fun loadAHlInc() {
+        a = memory.readByte(hl)
+
+        val inc = hl + 1u
+        h = (inc shr 8).toUByte()
+        l = (inc and 0xFFu).toUByte()
+
+        if (isDebug)
+            println("$${pc.toHexString()} LD A, (HL+)")
+
+        pc++
+        t += 8
+        m += 2
     }
 
     private fun jrZ() {
