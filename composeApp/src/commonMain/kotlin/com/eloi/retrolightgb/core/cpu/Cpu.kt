@@ -106,18 +106,19 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x7Cu to { bitNumberRegister(bit = 7, registerName = "H", registerValue = h) },
         0x7Du to { bitNumberRegister(bit = 7, registerName = "L", registerValue = l) },
         0x7Fu to { bitNumberRegister(bit = 7, registerName = "A", registerValue = a) },
-        0x80u to { resetBitRegister(bit = 0, registerName = "B", registerValue = b) },
-        0x81u to { resetBitRegister(bit = 0, registerName = "C", registerValue = c) },
-        0x82u to { resetBitRegister(bit = 0, registerName = "D", registerValue = d) },
-        0x83u to { resetBitRegister(bit = 0, registerName = "E", registerValue = e) },
-        0x84u to { resetBitRegister(bit = 0, registerName = "H", registerValue = h) },
-        0x85u to { resetBitRegister(bit = 0, registerName = "L", registerValue = l) },
-        0x87u to { resetBitRegister(bit = 0, registerName = "A", registerValue = a) },
+        0x80u to { b = resetBitRegister(bit = 0, registerName = "B", registerValue = b) },
+        0x81u to { c = resetBitRegister(bit = 0, registerName = "C", registerValue = c) },
+        0x82u to { d = resetBitRegister(bit = 0, registerName = "D", registerValue = d) },
+        0x83u to { e = resetBitRegister(bit = 0, registerName = "E", registerValue = e) },
+        0x84u to { h = resetBitRegister(bit = 0, registerName = "H", registerValue = h) },
+        0x85u to { l = resetBitRegister(bit = 0, registerName = "L", registerValue = l) },
+        0x87u to { a = resetBitRegister(bit = 0, registerName = "A", registerValue = a) },
     )
     
     private val instructions: Map<UInt, () -> Unit> = mapOf(
         0x00u to ::nop,
         0x01u to { loadPairRegisterN16(pairRegisterName = "BC").destructureAssign(::b, ::c) },
+        0x02u to { loadRegisterToAddressPair(pairName = "BC", pairValue = bc) },
         0x03u to { incRegisterPair(pairName = "BC", pairValue = bc).destructureAssign(::b, ::c) },
         0x04u to { b = incRegister(registerName = "B", registerValue = b) },
         0x05u to { b = decRegister(registerName = "B", registerValue = b) },
@@ -129,6 +130,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x0Du to { c = decRegister(registerName = "C", registerValue = c) },
         0x0Eu to { c = loadRegisterN8(registerName = "C") },
         0x11u to { loadPairRegisterN16(pairRegisterName = "DE").destructureAssign(::d, ::e) },
+        0x12u to { loadRegisterToAddressPair(pairName = "DE", pairValue = de) },
         0x13u to { incRegisterPair(pairName = "DE", pairValue = de).destructureAssign(::d, ::e) },
         0x14u to { d = incRegister(registerName = "D", registerValue = d) },
         0x15u to { d = decRegister(registerName = "D", registerValue = d) },
@@ -272,7 +274,11 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xBFu to { cp(registerName = "A", registerValue = a) },
         0xC0u to ::retNz,
         0xC1u to { popPairRegister(pairRegisterName = "BC").destructureAssign(::b, ::c) },
+        0xC2u to ::jpNz,
         0xC3u to ::jpA16,
+        0xCAu to ::jpZ,
+        0xD2u to ::jpNc,
+        0xDAu to ::jpC,
         0xC5u to { pushPairRegister(pairRegisterName = "BC", high = b, low = c) },
         0xC7u to { rst(0x0000u) },
         0xC8u to ::retZ,
@@ -644,6 +650,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         resetFlags()
 
         if (a == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+        setFlag(FLAG_H)
 
         if (isDebug)
             println("$${pc.toHexString()} AND $registerName")
@@ -907,6 +914,17 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         return reg2Value
     }
 
+    private fun loadRegisterToAddressPair(pairName: String, pairValue: UShort) {
+        memory.writeByte(pairValue, a)
+
+        if (isDebug)
+            println("$${pc.toHexString()} LD ($pairName), A")
+
+        pc++
+        t += 8
+        m += 2
+    }
+
     private fun loadRegisterToHlAddress(registerName: String, registerValue: UByte) {
         memory.writeByte(hl, registerValue)
 
@@ -1026,6 +1044,82 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         pc = targetAddress
         t += 16
         m += 4
+    }
+
+    private fun jpNz() {
+        val low = memory.readByte((pc + 1u).toUShort())
+        val high = memory.readByte((pc + 2u).toUShort())
+        val targetAddress = combinateBytes(high, low)
+
+        if (isDebug)
+            println("$${pc.toHexString()} JP NZ, $${targetAddress.toHexString()}")
+
+        if (!isFlagSet(FLAG_Z)) {
+            pc = targetAddress
+            t += 16
+            m += 4
+        } else {
+            pc = (pc + 3u).toUShort()
+            t += 12
+            m += 3
+        }
+    }
+
+    private fun jpZ() {
+        val low = memory.readByte((pc + 1u).toUShort())
+        val high = memory.readByte((pc + 2u).toUShort())
+        val targetAddress = combinateBytes(high, low)
+
+        if (isDebug)
+            println("$${pc.toHexString()} JP Z, $${targetAddress.toHexString()}")
+
+        if (isFlagSet(FLAG_Z)) {
+            pc = targetAddress
+            t += 16
+            m += 4
+        } else {
+            pc = (pc + 3u).toUShort()
+            t += 12
+            m += 3
+        }
+    }
+
+    private fun jpNc() {
+        val low = memory.readByte((pc + 1u).toUShort())
+        val high = memory.readByte((pc + 2u).toUShort())
+        val targetAddress = combinateBytes(high, low)
+
+        if (isDebug)
+            println("$${pc.toHexString()} JP NC, $${targetAddress.toHexString()}")
+
+        if (!isFlagSet(FLAG_C)) {
+            pc = targetAddress
+            t += 16
+            m += 4
+        } else {
+            pc = (pc + 3u).toUShort()
+            t += 12
+            m += 3
+        }
+    }
+
+    private fun jpC() {
+        val low = memory.readByte((pc + 1u).toUShort())
+        val high = memory.readByte((pc + 2u).toUShort())
+        val targetAddress = combinateBytes(high, low)
+
+        if (isDebug)
+            println("$${pc.toHexString()} JP C, $${targetAddress.toHexString()}")
+
+        if (isFlagSet(FLAG_C)) {
+            pc = targetAddress
+            t += 16
+            m += 4
+        } else {
+            pc = (pc + 3u).toUShort()
+            t += 12
+            m += 3
+        }
     }
 
     private fun di() {
