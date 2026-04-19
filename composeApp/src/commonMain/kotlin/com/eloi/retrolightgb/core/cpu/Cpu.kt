@@ -42,6 +42,14 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x14u to { h = rlRegister(registerName = "H", registerValue = h) },
         0x15u to { l = rlRegister(registerName = "L", registerValue = l) },
         0x17u to { a = rlRegister(registerName = "A", registerValue = a) },
+        0x30u to { b = swapRegister(registerName = "B", registerValue = b) },
+        0x31u to { c = swapRegister(registerName = "C", registerValue = c) },
+        0x32u to { d = swapRegister(registerName = "D", registerValue = d) },
+        0x33u to { e = swapRegister(registerName = "E", registerValue = e) },
+        0x34u to { h = swapRegister(registerName = "H", registerValue = h) },
+        0x35u to { l = swapRegister(registerName = "L", registerValue = l) },
+        0x36u to ::swapHl,
+        0x37u to { a = swapRegister(registerName = "A", registerValue = a) },
         0x40u to { bitNumberRegister(bit = 0, registerName = "B", registerValue = b) },
         0x41u to { bitNumberRegister(bit = 0, registerName = "C", registerValue = c) },
         0x42u to { bitNumberRegister(bit = 0, registerName = "D", registerValue = d) },
@@ -241,25 +249,33 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xC1u to { popPairRegister(pairRegisterName = "BC").destructureAssign(::b, ::c) },
         0xC3u to ::jpA16,
         0xC5u to { pushPairRegister(pairRegisterName = "BC", high = b, low = c) },
+        0xC7u to { rst(0x0000u) },
         0xC8u to ::retZ,
         0xC9u to ::ret,
         0xCDu to ::call,
+        0xCFu to { rst(0x0008u) },
         0xD1u to { popPairRegister(pairRegisterName = "DE").destructureAssign(::d, ::e) },
         0xD5u to { pushPairRegister(pairRegisterName = "DE", high = d, low = e) },
+        0xD7u to { rst(0x0010u) },
         0xD9u to ::retI,
+        0xDFu to { rst(0x0018u) },
         0xE0u to ::loadFF00N8,
         0xE1u to { popPairRegister(pairRegisterName = "HL").destructureAssign(::h, ::l) },
         0xE2u to ::loadFF00C,
         0xE5u to { pushPairRegister(pairRegisterName = "HL", high = h, low = l) },
         0xE6u to ::andAN8,
+        0xE7u to { rst(0x0020u) },
         0xEAu to ::loadN16A,
+        0xEFu to { rst(0x0028u) },
         0xF0u to ::loadAFF00N8,
         0xF1u to { popPairRegister(pairRegisterName = "AF").destructureAssign(::a, ::f) },
         0xF3u to ::di,
         0xF5u to { pushPairRegister(pairRegisterName = "AF", high = a, low = f) },
+        0xF7u to { rst(0x0030u) },
         0xFAu to ::loadAN16,
         0xFBu to ::ei,
         0xFEu to { cp() },
+        0xFFu to { rst(0x0038u) },
     )
 
     fun step() {
@@ -1047,6 +1063,39 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         m += 2
     }
 
+    private fun swapRegister(registerName: String, registerValue: UByte): UByte {
+        val newValue = ((registerValue.toUInt() shl 4) or (registerValue.toUInt() shr 4)) and 0xFFu
+        val result = newValue.toUByte()
+
+        resetFlags()
+        if (result == 0u.toUByte()) setFlag(FLAG_Z)
+
+        if (isDebug)
+            println("$${pc.toHexString()} SWAP $registerName")
+
+        pc = (pc + 2u).toUShort()
+        t += 8
+        m += 2
+
+        return result
+    }
+
+    private fun swapHl() {
+        val value = memory.readByte(hl)
+        val result = ((value.toUInt() shl 4) or (value.toUInt() shr 4)) and 0xFFu
+        memory.writeByte(hl, result.toUByte())
+
+        resetFlags()
+        if (result == 0u) setFlag(FLAG_Z)
+
+        if (isDebug)
+            println("$${pc.toHexString()} SWAP (HL)")
+
+        pc = (pc + 2u).toUShort()
+        t += 16
+        m += 4
+    }
+
     private fun subRegister(registerName: String, registerValue: UByte) {
         val result = a - registerValue
 
@@ -1063,6 +1112,21 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         pc++
         t += 4
         m++
+    }
+
+    private fun rst(address: UShort) {
+        val returnAddress = (pc + 1u).toUShort()
+        sp--
+        memory.writeByte(sp, (returnAddress.toInt() shr 8).toUByte())
+        sp--
+        memory.writeByte(sp, (returnAddress.toInt() and 0xFF).toUByte())
+
+        if (isDebug)
+            println("$${pc.toHexString()} RST ${address.toHexString()}h")
+
+        pc = address
+        t += 16
+        m += 4
     }
 
     companion object {
