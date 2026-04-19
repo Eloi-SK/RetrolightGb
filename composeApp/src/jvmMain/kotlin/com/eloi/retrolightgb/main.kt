@@ -29,7 +29,7 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "RetrolightGb",
-        state = rememberWindowState(width = 800.dp, height = 600.dp)
+        state = rememberWindowState(width = 640.dp, height = 576.dp)
     ) {
         App()
     }
