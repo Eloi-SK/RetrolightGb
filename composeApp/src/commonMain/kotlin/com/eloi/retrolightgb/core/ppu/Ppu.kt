@@ -178,7 +178,7 @@ class Ppu(private val memory: Memory) {
                 println("PPU: LYC=LY Interrupt Requested (LY=${lyValue.toString(16)}, LYC=${lycValue.toString(16)})")
             }
         } else {
-            statValue = (statValue.toInt() and 0xFB.inv()).toUByte() // 0xFB é 11111011b
+            statValue = (statValue.toInt() and 0xFB).toUByte()
         }
         memory.writeByte(0xFF41u, statValue)
     }
