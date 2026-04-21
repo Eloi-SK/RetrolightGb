@@ -1,12 +1,46 @@
 package com.eloi.retrolightgb.core.cpu
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import com.eloi.retrolightgb.core.memory.Memory
+import kotlin.concurrent.Volatile
 import kotlin.reflect.KMutableProperty0
 
 class Cpu(val memory: Memory, val isDebug: Boolean = false) {
+
+    private val traceArray = arrayOfNulls<String>(TRACE_BUFFER_SIZE)
+    private var traceHead = 0
+    private var traceFull = false
+    var traceWriter: ((String) -> Unit)? = null
+
+    private fun trace(msg: String) {
+        val writer = traceWriter
+        if (writer != null) {
+            writer(msg)
+        } else {
+            traceArray[traceHead] = msg
+            traceHead++
+            if (traceHead >= TRACE_BUFFER_SIZE) { traceHead = 0; traceFull = true }
+        }
+    }
+
+    private fun traceStep() {
+        val b0 = memory.readByte(pc).toHexString().uppercase()
+        val b1 = memory.readByte((pc + 1u).toUShort()).toHexString().uppercase()
+        val b2 = memory.readByte((pc + 2u).toUShort()).toHexString().uppercase()
+        val b3 = memory.readByte((pc + 3u).toUShort()).toHexString().uppercase()
+        trace("A:${a.toHexString().uppercase()} F:${f.toHexString().uppercase()} B:${b.toHexString().uppercase()} C:${c.toHexString().uppercase()} D:${d.toHexString().uppercase()} E:${e.toHexString().uppercase()} H:${h.toHexString().uppercase()} L:${l.toHexString().uppercase()} SP:${sp.toHexString().uppercase()} PC:${pc.toHexString().uppercase()} PCMEM:$b0,$b1,$b2,$b3")
+    }
+
+    fun dumpTrace(): String {
+        val count = if (traceFull) TRACE_BUFFER_SIZE else traceHead
+        val start = if (traceFull) traceHead else 0
+        return buildString {
+            for (i in 0 until count) {
+                if (i > 0) appendLine()
+                append(traceArray[(start + i) % TRACE_BUFFER_SIZE] ?: "")
+            }
+        }
+    }
+
     var a: UByte = 0u
     var b: UByte = 0u
     var c: UByte = 0u
@@ -30,9 +64,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         get() = combinateBytes(b, c)
     val de: UShort
         get() = combinateBytes(d, e)
-
-    var registersDump by mutableStateOf(buildRegistersDump())
-    var flagsDump by mutableStateOf(buildFlagsDump())
 
     private val cbInstructions: Map<UInt, () -> Unit> = mapOf(
         0x10u to { b = rlRegister(registerName = "B", registerValue = b) },
@@ -313,6 +344,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     fun step() {
         lastT = t
         lastM = m
+        if (isDebug) traceStep()
         val opcode = memory.readByte(pc)
         if (opcode == 0xCBu.toUByte()) {
             val cbOpcode = memory.readByte((pc + 1u).toUShort())
@@ -326,8 +358,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
                 )
         }
         handleInterrupts()
-        registersDump = buildRegistersDump()
-        flagsDump = buildFlagsDump()
     }
 
     private fun handleInterrupts() {
@@ -362,13 +392,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         sp = (sp - 2u).toUShort()
     }
 
-    private fun buildRegistersDump(): String =
-        "A: 0x${a.toHexString()}, B: 0x${b.toHexString()}, C: 0x${c.toHexString()}, D: 0x${d.toHexString()}, " +
-                "E: 0x${e.toHexString()}, H: 0x${h.toHexString()}, L: 0x${l.toHexString()}"
-
-    private fun buildFlagsDump(): String =
-        "Z: ${isFlagSet(FLAG_Z)}, N: ${isFlagSet(FLAG_N)}, H: ${isFlagSet(FLAG_H)}, C: ${isFlagSet(FLAG_C)}"
-
     private fun combinateBytes(high: UByte, low: UByte): UShort =
         ((high.toUInt() shl 8) or low.toUInt()).toUShort()
 
@@ -392,9 +415,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun isFlagSet(flag: UByte): Boolean = (f and flag) != 0u.toUByte()
 
     private fun nop() {
-        if (isDebug)
-            println("$${pc.toHexString()} NOP")
-
         pc++
         t += 4
         m++
@@ -402,10 +422,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     private fun loadRegisterFromHlAddress(registerName: String): UByte {
         val value = memory.readByte(hl)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD $registerName, (HL)")
-
         pc++
         t += 8
         m += 2
@@ -414,43 +430,26 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     private fun loadRegisterN8(registerName: String): UByte {
         val newValue = memory.readByte((pc + 1u).toUShort())
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD $registerName, $${newValue.toHexString()}")
-
         pc = (pc + 2u).toUShort()
         t += 8
         m += 2
-
         return newValue
     }
 
     private fun loadPairRegisterN16(pairRegisterName: String): Pair<UByte, UByte> {
         val low = memory.readByte((pc + 1u).toUShort())
         val high = memory.readByte((pc + 2u).toUShort())
-
-        val value = combinateBytes(high, low)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD $pairRegisterName, $${value.toHexString()}")
-
         pc = (pc + 3u).toUShort()
         t += 12
         m += 3
-
         return high to low
     }
 
     private fun loadN16A() {
         val low = memory.readByte((pc + 1u).toUShort())
         val high = memory.readByte((pc + 2u).toUShort())
-
         val value = combinateBytes(high, low)
         memory.writeByte(value, a)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD ($${value.toHexString()}), A")
-
         pc = (pc + 3u).toUShort()
         t += 16
         m += 4
@@ -460,12 +459,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val low = memory.readByte((pc + 1u).toUShort())
         val high = memory.readByte((pc + 2u).toUShort())
         val address = combinateBytes(high, low)
-
         a = memory.readByte(address)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD A, ($${address.toHexString()})")
-
         pc = (pc + 3u).toUShort()
         t += 16
         m += 4
@@ -475,10 +469,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val low = memory.readByte((pc + 1u).toUShort())
         val high = memory.readByte((pc + 2u).toUShort())
         sp = combinateBytes(high, low)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD SP, $${sp.toHexString()}")
-
         pc = (pc + 3u).toUShort()
         t += 12
         m += 3
@@ -486,10 +476,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     private fun incSp() {
         sp++
-
-        if (isDebug)
-            println("$${pc.toHexString()} INC SP")
-
         pc++
         t += 8
         m += 2
@@ -504,10 +490,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         if (newValue == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
 
         if ((value and 0x0Fu) == 0x0Fu.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
-
-        if (isDebug)
-            println("$${pc.toHexString()} INC (HL)")
-
         pc++
         t += 12
         m += 3
@@ -517,14 +499,9 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val newValue = pairValue + 1u
         val high = (newValue shr 8).toUByte()
         val low = (newValue and 0xFFu).toUByte()
-
-        if (isDebug)
-            println("$${pc.toHexString()} INC $pairName")
-
         pc++
         t += 8
         m += 2
-
         return high to low
     }
 
@@ -532,14 +509,9 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val newValue = pairValue - 1u
         val high = (newValue shr 8).toUByte()
         val low = (newValue and 0xFFu).toUByte()
-
-        if (isDebug)
-            println("$${pc.toHexString()} DEC $pairName")
-
         pc++
         t += 8
         m += 2
-
         return high to low
     }
 
@@ -548,14 +520,9 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         unsetFlag(FLAG_N)
         if (newValue == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
         if (newValue and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
-
-        if (isDebug)
-            println("$${pc.toHexString()} INC $registerName")
-
         pc++
         t += 4
         m++
-
         return newValue
     }
 
@@ -564,14 +531,9 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         setFlag(FLAG_N)
         if (newValue == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
         if (registerValue and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
-
-        if (isDebug)
-            println("$${pc.toHexString()} DEC $registerName")
-
         pc++
         t += 4
         m++
-
         return newValue
     }
 
@@ -581,9 +543,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         sp--
         memory.writeByte(sp, low)
 
-        if (isDebug)
-            println("$${pc.toHexString()} PUSH $pairRegisterName")
-
         pc++
         t += 16
         m += 4
@@ -592,26 +551,17 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun popPairRegister(pairRegisterName: String): Pair<UByte, UByte> {
         val low = memory.readByte(sp)
         val high = memory.readByte((sp + 1u).toUShort())
-
-        if (isDebug)
-            println("$${pc.toHexString()} POP $pairRegisterName")
-
         pc++
         sp = (sp + 2u).toUShort()
         t += 12
         m += 3
-
         return high to low
     }
 
     private fun cpl() {
-        if (isDebug)
-            println("$${pc.toHexString()} CPL")
-
         a = a.inv()
         setFlag(FLAG_N)
         setFlag(FLAG_H)
-
         pc++
         t += 4
         m++
@@ -620,12 +570,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun xorARegister(registerName: String, registerValue: UByte) {
         a = a xor registerValue
         resetFlags()
-
         if (a == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-
-        if (isDebug)
-            println("$${pc.toHexString()} XOR $registerName")
-
         pc++
         t += 4
         m++
@@ -634,12 +579,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun orARegister(registerName: String, registerValue: UByte) {
         a = a or registerValue
         resetFlags()
-
         if (a == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-
-        if (isDebug)
-            println("$${pc.toHexString()} OR $registerName")
-
         pc++
         t += 4
         m++
@@ -648,13 +588,8 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun andARegister(registerName: String, registerValue: UByte) {
         a = a and registerValue
         resetFlags()
-
         if (a == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
         setFlag(FLAG_H)
-
-        if (isDebug)
-            println("$${pc.toHexString()} AND $registerName")
-
         pc++
         t += 4
         m++
@@ -663,15 +598,10 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun andAN8() {
         val value = memory.readByte((pc + 1u).toUShort())
         a = a and value
-
         if (a == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
         unsetFlag(FLAG_N)
         setFlag(FLAG_H)
         unsetFlag(FLAG_C)
-
-        if (isDebug)
-            println("$${pc.toHexString()} AND $${value.toHexString()}")
-
         pc = (pc + 2u).toUShort()
         t += 8
         m += 2
@@ -692,10 +622,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         unsetFlag(FLAG_N)
         unsetFlag(FLAG_H)
         a = result.toUByte()
-
-        if (isDebug)
-            println("$${pc.toHexString()} RLA")
-
         pc++
         t += 4
         m++
@@ -712,9 +638,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         sp--
         memory.writeByte(sp, (returnAddress.toInt() and 0xFF).toUByte())
 
-        if (isDebug)
-            println("$${pc.toHexString()} CALL $${targetAddress.toHexString()}")
-
         pc = targetAddress
         t += 24
         m += 6
@@ -724,19 +647,12 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val low = memory.readByte(sp)
         val high = memory.readByte((sp + 1u).toUShort())
         sp = (sp + 2u).toUShort()
-
-        if (isDebug)
-            println("$${pc.toHexString()} RET")
-
         pc = combinateBytes(high, low)
         t += 16
         m += 4
     }
 
     private fun retZ() {
-        if (isDebug)
-            println("$${pc.toHexString()} RET Z")
-
         if (isFlagSet(FLAG_Z)) {
             val low = memory.readByte(sp)
             val high = memory.readByte((sp + 1u).toUShort())
@@ -752,9 +668,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     }
 
     private fun retNz() {
-        if (isDebug)
-            println("$${pc.toHexString()} RET NZ")
-
         if (!isFlagSet(FLAG_Z)) {
             val low = memory.readByte(sp)
             val high = memory.readByte((sp + 1u).toUShort())
@@ -774,11 +687,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val high = memory.readByte((sp + 1u).toUShort())
         sp = (sp + 2u).toUShort()
         imeEnabled = true
-
-
-        if (isDebug)
-            println("$${pc.toHexString()} RET")
-
         pc = combinateBytes(high, low)
         t += 16
         m += 4
@@ -795,10 +703,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         if (result.toUByte() and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
 
         if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
-
-        if (isDebug)
-            println("$${pc.toHexString()} CP (HL)")
-
         pc++
         t += 8
         m += 2
@@ -809,15 +713,9 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         var result: UInt
         if (registerName != null && registerValue != null) {
             result = a - registerValue
-
-            if (isDebug)
-                println("$${pc.toHexString()} CP $registerName")
         } else {
             val value = memory.readByte((pc + 1u).toUShort())
             result = a - value
-
-            if (isDebug)
-                println("$${pc.toHexString()} CP $${value.toHexString()}")
         }
 
         setFlag(FLAG_N)
@@ -856,10 +754,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         if (result > 0xFF) setFlag(FLAG_C)
 
         a = result.toUByte()
-
-        if (isDebug)
-            println("$${pc.toHexString()} ADD A, $registerName")
-
         pc++
         t += 4
         m += 1
@@ -874,10 +768,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         if (result > 0xFF) setFlag(FLAG_C)
 
         if (((a.toInt() and 0x0F) + (value.toInt() and 0x0F)) > 0x0F) setFlag(FLAG_H)
-
-        if (isDebug)
-            println("$${pc.toHexString()} ADD A, (HL")
-
         a = result.toUByte()
         pc++
         t += 8
@@ -895,31 +785,20 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         h = (finalValue.toInt() shr 8).toUByte()
         l = (finalValue.toInt() and 0xFF).toUByte()
 
-        if (isDebug)
-            println("$${pc.toHexString()} ADD HL, $pairName}")
-
         pc++
         t += 8
         m += 2
     }
 
     private fun loadRegisterToRegister(reg1Name: String, reg2Name: String, reg2Value: UByte): UByte {
-        if (isDebug)
-            println("$${pc.toHexString()} LD $reg1Name, $reg2Name")
-
         pc++
         t += 4
         m++
-
         return reg2Value
     }
 
     private fun loadRegisterToAddressPair(pairName: String, pairValue: UShort) {
         memory.writeByte(pairValue, a)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD ($pairName), A")
-
         pc++
         t += 8
         m += 2
@@ -927,10 +806,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     private fun loadRegisterToHlAddress(registerName: String, registerValue: UByte) {
         memory.writeByte(hl, registerValue)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD (HL), $registerName")
-
         pc++
         t += 8
         m += 2
@@ -938,10 +813,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     private fun loadPairRegisterAddressToA(pairName: String, pairValue: UShort) {
         a = memory.readByte(pairValue)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD A, ($pairName)")
-
         pc++
         t += 8
         m += 2
@@ -953,9 +824,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         h = (inc shr 8).toUByte()
         l = (inc and 0xFFu).toUByte()
 
-        if (isDebug)
-            println("$${pc.toHexString()} LD (HL+), A")
-
         pc++
         t += 8
         m += 2
@@ -966,10 +834,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val dec = hl - 1u
         h = (dec shr 8).toUByte()
         l = (dec and 0xFFu).toUByte()
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD (HL-), A")
-
         pc++
         t += 8
         m += 2
@@ -980,9 +844,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val address = combinateBytes(high = 0xFFu, low = value)
         a = memory.readByte(address)
 
-        if(isDebug)
-            println("$${pc.toHexString()} LD A, (\$FF00+$${value.toHexString()})")
-
         pc = (pc + 2u).toUShort()
         t += 12
         m += 3
@@ -992,10 +853,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val value = memory.readByte((pc + 1u).toUShort())
         val address = combinateBytes(high = 0xFFu, low = value)
         memory.writeByte(address, a)
-
-        if(isDebug)
-            println("$${pc.toHexString()} LD (\$FF00+$${value.toHexString()}), A")
-
         pc = (pc + 2u).toUShort()
         t += 12
         m += 3
@@ -1004,19 +861,12 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun loadFF00C() {
         val address = combinateBytes(high = 0xFFu, low = c)
         memory.writeByte(address, a)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD (\$FF00+C), A")
-
         pc++
         t += 8
         m += 2
     }
 
     private fun jpHl() {
-        if (isDebug)
-            println("$${pc.toHexString()} JP (HL)")
-
         pc = hl
         t += 4
         m += 1
@@ -1024,10 +874,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     private fun jr() {
         val offset = memory.readByte((pc + 1u).toUShort()).toByte()
-
-        if (isDebug)
-            println("$${pc.toHexString()} JR, $${(pc.toInt() + 2 + offset.toInt()).toUShort().toHexString()}")
-
         pc = (pc.toInt() + 2 + offset.toInt()).toUShort()
         t += 12
         m += 3
@@ -1037,10 +883,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val low = memory.readByte((pc + 1u).toUShort())
         val high = memory.readByte((pc + 2u).toUShort())
         val targetAddress = combinateBytes(high, low)
-
-        if (isDebug)
-            println("$${pc.toHexString()} JP $${targetAddress.toHexString()}")
-
         pc = targetAddress
         t += 16
         m += 4
@@ -1050,10 +892,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val low = memory.readByte((pc + 1u).toUShort())
         val high = memory.readByte((pc + 2u).toUShort())
         val targetAddress = combinateBytes(high, low)
-
-        if (isDebug)
-            println("$${pc.toHexString()} JP NZ, $${targetAddress.toHexString()}")
-
         if (!isFlagSet(FLAG_Z)) {
             pc = targetAddress
             t += 16
@@ -1069,10 +907,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val low = memory.readByte((pc + 1u).toUShort())
         val high = memory.readByte((pc + 2u).toUShort())
         val targetAddress = combinateBytes(high, low)
-
-        if (isDebug)
-            println("$${pc.toHexString()} JP Z, $${targetAddress.toHexString()}")
-
         if (isFlagSet(FLAG_Z)) {
             pc = targetAddress
             t += 16
@@ -1088,10 +922,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val low = memory.readByte((pc + 1u).toUShort())
         val high = memory.readByte((pc + 2u).toUShort())
         val targetAddress = combinateBytes(high, low)
-
-        if (isDebug)
-            println("$${pc.toHexString()} JP NC, $${targetAddress.toHexString()}")
-
         if (!isFlagSet(FLAG_C)) {
             pc = targetAddress
             t += 16
@@ -1107,10 +937,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val low = memory.readByte((pc + 1u).toUShort())
         val high = memory.readByte((pc + 2u).toUShort())
         val targetAddress = combinateBytes(high, low)
-
-        if (isDebug)
-            println("$${pc.toHexString()} JP C, $${targetAddress.toHexString()}")
-
         if (isFlagSet(FLAG_C)) {
             pc = targetAddress
             t += 16
@@ -1123,9 +949,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     }
 
     private fun di() {
-        if (isDebug)
-            println("$${pc.toHexString()} DI")
-
         imeEnabled = false
         pc++
         t += 4
@@ -1133,9 +956,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     }
 
     private fun ei() {
-        if (isDebug)
-            println("$${pc.toHexString()} EI")
-
         imeEnabled = true
         pc++
         t += 4
@@ -1145,10 +965,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun ldHLN8() {
         val value = memory.readByte((pc + 1u).toUShort())
         memory.writeByte(hl, value)
-
-        if (isDebug)
-            println("$${pc.toHexString()} LD (HL), $${value.toHexString()}")
-
         pc = (pc + 2u).toUShort()
         t += 12
         m += 3
@@ -1161,9 +977,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         h = (inc shr 8).toUByte()
         l = (inc and 0xFFu).toUByte()
 
-        if (isDebug)
-            println("$${pc.toHexString()} LD A, (HL+)")
-
         pc++
         t += 8
         m += 2
@@ -1173,16 +986,10 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val offset = memory.readByte((pc + 1u).toUShort()).toByte()
 
         if (isFlagSet(FLAG_Z)) {
-            if (isDebug)
-                println("$${pc.toHexString()} JR Z, $${(pc.toInt() + 2 + offset.toInt()).toUShort().toHexString()}")
-
             pc = (pc.toInt() + 2 + offset.toInt()).toUShort()
             t += 12
             m += 3
         } else {
-            if (isDebug)
-                println("$${pc.toHexString()} JR Z, $${(pc + 2u).toUShort().toHexString()}")
-
             pc = (pc + 2u).toUShort()
             t += 8
             m += 2
@@ -1191,18 +998,11 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     private fun jrNz() {
         val offset = memory.readByte((pc + 1u).toUShort()).toByte()
-
-        if (isFlagSet(FLAG_Z).not()) {
-            if (isDebug)
-                println("$${pc.toHexString()} JR NZ, $${(pc.toInt() + 2 + offset.toInt()).toUShort().toHexString()}")
-
+        if (!isFlagSet(FLAG_Z)) {
             pc = (pc.toInt() + 2 + offset.toInt()).toUShort()
             t += 12
             m += 3
         } else {
-            if (isDebug)
-                println("$${pc.toHexString()} JR NZ, $${(pc + 2u).toUShort().toHexString()}")
-
             pc = (pc + 2u).toUShort()
             t += 8
             m += 2
@@ -1222,9 +1022,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         unsetFlag(FLAG_N)
         unsetFlag(FLAG_H)
 
-        if (isDebug)
-            println("$${pc.toHexString()} RL $registerName")
-
         pc = (pc + 2u).toUShort()
         t += 8
         m += 2
@@ -1239,9 +1036,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         unsetFlag(FLAG_N)
         if (bitValue == 0) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
 
-        if (isDebug)
-            println("$${pc.toHexString()} BIT $bit, $registerName")
-
         pc = (pc + 2u).toUShort()
         t += 8
         m += 2
@@ -1250,9 +1044,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun resetBitRegister(bit: Int, registerName: String, registerValue: UByte): UByte {
         val mask = (1 shl bit).inv() and 0xFF
         val result = (registerValue.toInt() and mask).toUByte()
-
-        if (isDebug)
-            println("$${pc.toHexString()} RES $bit, $registerName")
 
         pc = (pc + 2u).toUShort()
         t += 8
@@ -1268,13 +1059,9 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         resetFlags()
         if (result == 0u.toUByte()) setFlag(FLAG_Z)
 
-        if (isDebug)
-            println("$${pc.toHexString()} SWAP $registerName")
-
         pc = (pc + 2u).toUShort()
         t += 8
         m += 2
-
         return result
     }
 
@@ -1282,13 +1069,8 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val value = memory.readByte(hl)
         val result = ((value.toUInt() shl 4) or (value.toUInt() shr 4)) and 0xFFu
         memory.writeByte(hl, result.toUByte())
-
         resetFlags()
         if (result == 0u) setFlag(FLAG_Z)
-
-        if (isDebug)
-            println("$${pc.toHexString()} SWAP (HL)")
-
         pc = (pc + 2u).toUShort()
         t += 16
         m += 4
@@ -1303,10 +1085,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
 
         a = result.toUByte()
-
-        if (isDebug)
-            println("$${pc.toHexString()} SUB $registerName")
-
         pc++
         t += 4
         m++
@@ -1319,9 +1097,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         sp--
         memory.writeByte(sp, (returnAddress.toInt() and 0xFF).toUByte())
 
-        if (isDebug)
-            println("$${pc.toHexString()} RST ${address.toHexString()}h")
-
         pc = address
         t += 16
         m += 4
@@ -1332,5 +1107,6 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         val FLAG_N = 0b0100_0000u.toUByte() // Subtract flag
         val FLAG_H = 0b0010_0000u.toUByte() // Half carry flag
         val FLAG_C = 0b0001_0000u.toUByte() // Carry flag
+        private const val TRACE_BUFFER_SIZE = 200
     }
 }
