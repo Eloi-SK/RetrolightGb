@@ -1,5 +1,6 @@
 package com.eloi.retrolightgb
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
@@ -15,6 +16,7 @@ import com.eloi.retrolightgb.core.memory.Memory
 import com.eloi.retrolightgb.core.ppu.Ppu
 import com.eloi.retrolightgb.di.rememberInstance
 import com.eloi.retrolightgb.ui.GameBoyScreen
+import com.eloi.retrolightgb.ui.SerialTerminal
 import com.eloi.retrolightgb.ui.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,10 +60,10 @@ fun App() {
                 )
             }
         ) { innerPadding ->
-            GameBoyScreen(
-                modifier = Modifier.padding(innerPadding),
-                frameBuffer = ppu.frameBuffer,
-            )
+            Column(modifier = Modifier.padding(innerPadding)) {
+                GameBoyScreen(frameBuffer = ppu.frameBuffer)
+                SerialTerminal(output = memory.serialOutput)
+            }
         }
     }
 }

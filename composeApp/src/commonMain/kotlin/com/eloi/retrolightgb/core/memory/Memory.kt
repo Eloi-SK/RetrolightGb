@@ -1,5 +1,8 @@
 package com.eloi.retrolightgb.core.memory
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.eloi.retrolightgb.core.cpu.InterruptType
 
 @OptIn(ExperimentalUnsignedTypes::class)
@@ -9,6 +12,10 @@ class Memory {
     private var isBootRomEnabled = true
     private var ifRegister: UByte = 0u
     private var ieRegister: UByte = 0u
+
+    private val serialBuffer = StringBuilder()
+    var serialOutput by mutableStateOf("")
+        private set
 
     fun load(rom: ByteArray) {
         for (i in rom.indices) {
@@ -43,6 +50,15 @@ class Memory {
         when (addr) {
             0xFF0F -> ifRegister = value
             0xFFFF -> ieRegister = value
+            // Serial transfer: bit 7 = start, bit 0 = internal clock
+            0xFF02 -> {
+                ram[addr] = value
+                if (value and 0x81u.toUByte() == 0x81u.toUByte()) {
+                    serialBuffer.append(ram[0xFF01].toInt().toChar())
+                    serialOutput = serialBuffer.toString()
+                    ram[addr] = value and 0x7Fu.toUByte() // clear transfer-start bit
+                }
+            }
             else -> ram[addr] = value
         }
     }
