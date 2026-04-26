@@ -12,15 +12,15 @@ class Memory {
     private var isBootRomEnabled = true
     private var ifRegister: UByte = 0u
     private var ieRegister: UByte = 0u
+    private var cartridge: Cartridge? = null
 
     private val serialBuffer = StringBuilder()
     var serialOutput by mutableStateOf("")
         private set
 
     fun load(rom: ByteArray) {
-        for (i in rom.indices) {
-            ram[i] = rom[i].toUByte()
-        }
+        val uRom = UByteArray(rom.size) { rom[it].toUByte() }
+        cartridge = CartridgeFactory.create(uRom)
     }
 
     fun requestInterrupt(type: InterruptType) {
@@ -34,9 +34,11 @@ class Memory {
     fun readByte(address: UShort): UByte {
         val addr = address.toInt()
         return when {
+            isBootRomEnabled && addr in 0 until bootRom.size -> bootRom[addr]
+            addr in 0x0000..0x7FFF -> cartridge?.readByte(addr) ?: 0xFFu
+            addr in 0xA000..0xBFFF -> cartridge?.readByte(addr) ?: 0xFFu
             addr == 0xFF0F -> ifRegister
             addr == 0xFFFF -> ieRegister
-            isBootRomEnabled && addr in 0 until bootRom.size -> bootRom[addr]
             else -> ram[addr]
         }
     }
@@ -48,6 +50,8 @@ class Memory {
             isBootRomEnabled = false
 
         when (addr) {
+            in 0x0000..0x7FFF -> cartridge?.writeByte(addr, value)
+            in 0xA000..0xBFFF -> cartridge?.writeByte(addr, value)
             0xFF0F -> ifRegister = value
             0xFFFF -> ieRegister = value
             // Serial transfer: bit 7 = start, bit 0 = internal clock
@@ -64,7 +68,7 @@ class Memory {
     }
 
     companion object {
-        private const val RAM_SIZE = 0x10000 // 64KB
+        private const val RAM_SIZE = 0x10000
         private const val BOOT_DISABLED_ADDRESS = 0xFF50
     }
 }
