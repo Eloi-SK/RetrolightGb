@@ -1,4 +1,6 @@
-package com.eloi.retrolightgb.core.cpu
+package com.eloi.retrolightgb.core.cpu.ops
+
+import com.eloi.retrolightgb.core.cpu.Cpu
 
 internal fun Cpu.loadRegisterFromHlAddress(): UByte {
     val value = memory.readByte(hl)

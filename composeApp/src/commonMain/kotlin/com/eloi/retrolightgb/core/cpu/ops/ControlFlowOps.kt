@@ -1,5 +1,6 @@
-package com.eloi.retrolightgb.core.cpu
+package com.eloi.retrolightgb.core.cpu.ops
 
+import com.eloi.retrolightgb.core.cpu.Cpu
 import com.eloi.retrolightgb.core.cpu.Cpu.Companion.FLAG_C
 import com.eloi.retrolightgb.core.cpu.Cpu.Companion.FLAG_H
 import com.eloi.retrolightgb.core.cpu.Cpu.Companion.FLAG_N
