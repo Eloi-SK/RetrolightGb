@@ -5,14 +5,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-
 import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.eloi.retrolightgb.core.cpu.Cpu
+import com.eloi.retrolightgb.core.memory.JoypadButton
 import com.eloi.retrolightgb.core.memory.Memory
 import com.eloi.retrolightgb.di.LocalDI
 import com.eloi.retrolightgb.di.di
@@ -35,6 +39,7 @@ fun main() = application {
 
         var openRom by remember { mutableStateOf<(() -> Unit)?>(null) }
         var showTerminal by remember { mutableStateOf(false) }
+        val memory = rememberInstance<Memory>()
 
         Window(
             onCloseRequest = {
@@ -44,7 +49,25 @@ fun main() = application {
                 exitApplication()
             },
             title = "RetrolightGb",
-            state = rememberWindowState(width = (160 * 4).dp, height = (144 * 4).dp)
+            state = rememberWindowState(width = (160 * 4).dp, height = (144 * 4).dp),
+            onKeyEvent = { event ->
+                val button = when (event.key) {
+                    Key.DirectionRight -> JoypadButton.Right
+                    Key.DirectionLeft  -> JoypadButton.Left
+                    Key.DirectionUp    -> JoypadButton.Up
+                    Key.DirectionDown  -> JoypadButton.Down
+                    Key.Z              -> JoypadButton.A
+                    Key.X              -> JoypadButton.B
+                    Key.Enter          -> JoypadButton.Start
+                    Key.Backspace      -> JoypadButton.Select
+                    else               -> null
+                } ?: return@Window false
+                when (event.type) {
+                    KeyEventType.KeyDown -> memory.pressButton(button)
+                    KeyEventType.KeyUp   -> memory.releaseButton(button)
+                }
+                true
+            }
         ) {
             MenuBar {
                 Menu("File", mnemonic = 'F') {
@@ -59,7 +82,6 @@ fun main() = application {
         }
 
         if (showTerminal) {
-            val memory = rememberInstance<Memory>()
             Window(
                 onCloseRequest = { showTerminal = false },
                 title = "Serial Terminal",

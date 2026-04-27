@@ -21,6 +21,17 @@ class Memory {
     private var divCounter: Int = 0
     private var timerAccumulator: Int = 0
 
+    private var joypadSelection: UByte = 0x30u
+    private val pressedButtons = mutableSetOf<JoypadButton>()
+
+    fun pressButton(button: JoypadButton) {
+        if (pressedButtons.add(button)) requestInterrupt(InterruptType.Joypad)
+    }
+
+    fun releaseButton(button: JoypadButton) {
+        pressedButtons.remove(button)
+    }
+
     fun load(rom: ByteArray) {
         val uRom = UByteArray(rom.size) { rom[it].toUByte() }
         cartridge = CartridgeFactory.create(uRom)
@@ -40,6 +51,22 @@ class Memory {
             isBootRomEnabled && addr in 0 until bootRom.size -> bootRom[addr]
             addr in 0x0000..0x7FFF -> cartridge?.readByte(addr) ?: 0xFFu
             addr in 0xA000..0xBFFF -> cartridge?.readByte(addr) ?: 0xFFu
+            addr == 0xFF00 -> {
+                var nibble = 0x0F
+                if (joypadSelection and 0x20u.toUByte() == 0u.toUByte()) {
+                    if (JoypadButton.A      in pressedButtons) nibble = nibble and 0x0E
+                    if (JoypadButton.B      in pressedButtons) nibble = nibble and 0x0D
+                    if (JoypadButton.Select in pressedButtons) nibble = nibble and 0x0B
+                    if (JoypadButton.Start  in pressedButtons) nibble = nibble and 0x07
+                }
+                if (joypadSelection and 0x10u.toUByte() == 0u.toUByte()) {
+                    if (JoypadButton.Right in pressedButtons) nibble = nibble and 0x0E
+                    if (JoypadButton.Left  in pressedButtons) nibble = nibble and 0x0D
+                    if (JoypadButton.Up    in pressedButtons) nibble = nibble and 0x0B
+                    if (JoypadButton.Down  in pressedButtons) nibble = nibble and 0x07
+                }
+                (0xC0 or joypadSelection.toInt() or nibble).toUByte()
+            }
             addr == 0xFF0F -> (ifRegister or 0xE0u).toUByte()
             addr == 0xFFFF -> ieRegister
             else -> ram[addr]
@@ -55,6 +82,7 @@ class Memory {
         when (addr) {
             in 0x0000..0x7FFF -> cartridge?.writeByte(addr, value)
             in 0xA000..0xBFFF -> cartridge?.writeByte(addr, value)
+            0xFF00 -> joypadSelection = value and 0x30u.toUByte()
             0xFF04 -> { divCounter = 0; timerAccumulator = 0; ram[addr] = 0u }
             0xFF0F -> ifRegister = value
             0xFFFF -> ieRegister = value
