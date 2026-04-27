@@ -34,31 +34,21 @@ internal fun Cpu.jr() {
     m += 3
 }
 
-internal fun Cpu.jrZ() {
+private fun Cpu.jrIf(condition: Boolean) {
     val offset = memory.readByte((pc + 1u).toUShort()).toByte()
-    if (isFlagSet(FLAG_Z)) {
+    if (condition) {
         pc = (pc.toInt() + 2 + offset.toInt()).toUShort()
-        t += 12
-        m += 3
+        t += 12; m += 3
     } else {
         pc = (pc + 2u).toUShort()
-        t += 8
-        m += 2
+        t += 8; m += 2
     }
 }
 
-internal fun Cpu.jrNz() {
-    val offset = memory.readByte((pc + 1u).toUShort()).toByte()
-    if (!isFlagSet(FLAG_Z)) {
-        pc = (pc.toInt() + 2 + offset.toInt()).toUShort()
-        t += 12
-        m += 3
-    } else {
-        pc = (pc + 2u).toUShort()
-        t += 8
-        m += 2
-    }
-}
+internal fun Cpu.jrZ()  = jrIf(isFlagSet(FLAG_Z))
+internal fun Cpu.jrNz() = jrIf(!isFlagSet(FLAG_Z))
+internal fun Cpu.jrC()  = jrIf(isFlagSet(FLAG_C))
+internal fun Cpu.jrNc() = jrIf(!isFlagSet(FLAG_C))
 
 internal fun Cpu.jpA16() {
     val low = memory.readByte((pc + 1u).toUShort())
@@ -129,35 +119,22 @@ internal fun Cpu.ret() {
     m += 4
 }
 
-internal fun Cpu.retZ() {
-    if (isFlagSet(FLAG_Z)) {
+private fun Cpu.retIf(condition: Boolean) {
+    if (condition) {
         val low = memory.readByte(sp)
         val high = memory.readByte((sp + 1u).toUShort())
         pc = combinateBytes(high, low)
         sp = (sp + 2u).toUShort()
-        t += 20
-        m += 5
+        t += 20; m += 5
     } else {
         pc++
-        t += 8
-        m += 2
+        t += 8; m += 2
     }
 }
 
-internal fun Cpu.retNz() {
-    if (!isFlagSet(FLAG_Z)) {
-        val low = memory.readByte(sp)
-        val high = memory.readByte((sp + 1u).toUShort())
-        pc = combinateBytes(high, low)
-        sp = (sp + 2u).toUShort()
-        t += 20
-        m += 5
-    } else {
-        pc++
-        t += 8
-        m += 2
-    }
-}
+internal fun Cpu.retZ()  = retIf(isFlagSet(FLAG_Z))
+internal fun Cpu.retNz() = retIf(!isFlagSet(FLAG_Z))
+internal fun Cpu.retNc() = retIf(!isFlagSet(FLAG_C))
 
 internal fun Cpu.retI() {
     val low = memory.readByte(sp)
@@ -179,6 +156,13 @@ internal fun Cpu.rst(address: UShort) {
     t += 16
     m += 4
 }
+
+internal fun Cpu.halt() {
+    halted = true
+    pc++; t += 4; m++
+}
+
+internal fun Cpu.decSp() { sp--; pc++; t += 8; m += 2 }
 
 internal fun Cpu.di() {
     imeEnabled = false

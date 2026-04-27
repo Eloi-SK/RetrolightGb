@@ -27,6 +27,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     var lastT: Int get() = registers.lastT; set(v) { registers.lastT = v }
     var lastM: Int get() = registers.lastM; set(v) { registers.lastM = v }
     var imeEnabled: Boolean get() = registers.imeEnabled; set(v) { registers.imeEnabled = v }
+    var halted: Boolean get() = registers.halted; set(v) { registers.halted = v }
     val hl: UShort get() = registers.hl
     val bc: UShort get() = registers.bc
     val de: UShort get() = registers.de
@@ -136,6 +137,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x18u to { jr() },
         0x19u to { addHlPair(de) },
         0x1Au to { loadPairRegisterAddressToA(de) },
+        0x1Bu to { decRegisterPair(de).destructureAssign(::d, ::e) },
         0x1Cu to { e = incRegister(e) },
         0x1Du to { e = decRegister(e) },
         0x1Eu to { e = loadRegisterN8() },
@@ -149,16 +151,20 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x28u to { jrZ() },
         0x29u to { addHlPair(hl) },
         0x2Au to { loadAHlInc() },
+        0x2Bu to { decRegisterPair(hl).destructureAssign(::h, ::l) },
         0x2Cu to { l = incRegister(l) },
         0x2Du to { l = decRegister(l) },
         0x2Eu to { l = loadRegisterN8() },
         0x2Fu to { cpl() },
+        0x30u to { jrNc() },
         0x31u to { loadSpN16() },
         0x32u to { loadHlDecA() },
         0x33u to { incSp() },
         0x34u to { incHlAddress() },
         0x36u to { ldHLN8() },
+        0x38u to { jrC() },
         0x39u to { addHlPair(sp) },
+        0x3Bu to { decSp() },
         0x3Cu to { a = incRegister(a) },
         0x3Du to { a = decRegister(a) },
         0x3Eu to { a = loadRegisterN8() },
@@ -216,6 +222,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0x73u to { loadRegisterToHlAddress(e) },
         0x74u to { loadRegisterToHlAddress(h) },
         0x75u to { loadRegisterToHlAddress(l) },
+        0x76u to { halt() },
         0x77u to { loadRegisterToHlAddress(a) },
         0x78u to { a = loadRegisterToRegister(b) },
         0x79u to { a = loadRegisterToRegister(c) },
@@ -282,6 +289,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xC9u to { ret() },
         0xCDu to { call() },
         0xCFu to { rst(0x0008u) },
+        0xD0u to { retNc() },
         0xD1u to { popPairRegister().destructureAssign(::d, ::e) },
         0xD5u to { pushPairRegister(d, e) },
         0xD7u to { rst(0x0010u) },
@@ -310,6 +318,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     fun step() {
         lastT = t
         lastM = m
+        if (halted) { t += 4; m++; handleInterrupts(); return }
         if (isDebug) tracer.step()
         val opcode = memory.readByte(pc)
         if (opcode == 0xCBu.toUByte()) {
@@ -327,20 +336,20 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     }
 
     private fun handleInterrupts() {
-        if (imeEnabled) {
-            val ifReg = memory.readByte(0xFF0Fu)
-            val ieReg = memory.readByte(0xFFFFu)
-            val pendingAndEnabled = ifReg and ieReg
-            if (pendingAndEnabled == 0u.toUByte()) return
-            for (interrupt in InterruptType.getAllTypes()) {
-                if (pendingAndEnabled and interrupt.mask != 0u.toUByte()) {
-                    imeEnabled = false
-                    memory.clearInterruptRequest(interrupt)
-                    pushWordToStack(pc)
-                    pc = interrupt.address
-                    t += 20; m += 5
-                    break
-                }
+        val ifReg = memory.readByte(0xFF0Fu)
+        val ieReg = memory.readByte(0xFFFFu)
+        val pendingAndEnabled = ifReg and ieReg
+        if (pendingAndEnabled == 0u.toUByte()) return
+        if (halted) halted = false
+        if (!imeEnabled) return
+        for (interrupt in InterruptType.getAllTypes()) {
+            if (pendingAndEnabled and interrupt.mask != 0u.toUByte()) {
+                imeEnabled = false
+                memory.clearInterruptRequest(interrupt)
+                pushWordToStack(pc)
+                pc = interrupt.address
+                t += 20; m += 5
+                break
             }
         }
     }
