@@ -1,5 +1,6 @@
-package com.eloi.retrolightgb.core.cpu
+package com.eloi.retrolightgb.core.cpu.ops
 
+import com.eloi.retrolightgb.core.cpu.Cpu
 import com.eloi.retrolightgb.core.cpu.Cpu.Companion.FLAG_C
 import com.eloi.retrolightgb.core.cpu.Cpu.Companion.FLAG_H
 import com.eloi.retrolightgb.core.cpu.Cpu.Companion.FLAG_N
@@ -174,6 +175,23 @@ internal fun Cpu.resetBitRegister(bit: Int, value: UByte): UByte {
     val result = (value.toInt() and ((1 shl bit).inv() and 0xFF)).toUByte()
     pc = (pc + 2u).toUShort(); t += 8; m += 2
     return result
+}
+
+internal fun Cpu.resetBitHl(bit: Int) {
+    val result = (memory.readByte(hl).toInt() and ((1 shl bit).inv() and 0xFF)).toUByte()
+    memory.writeByte(hl, result)
+    pc = (pc + 2u).toUShort(); t += 16; m += 4
+}
+
+internal fun Cpu.setBitRegister(bit: Int, value: UByte): UByte {
+    pc = (pc + 2u).toUShort(); t += 8; m += 2
+    return (value.toInt() or (1 shl bit)).toUByte()
+}
+
+internal fun Cpu.setBitHl(bit: Int) {
+    val result = (memory.readByte(hl).toInt() or (1 shl bit)).toUByte()
+    memory.writeByte(hl, result)
+    pc = (pc + 2u).toUShort(); t += 16; m += 4
 }
 
 internal fun Cpu.swapRegister(value: UByte): UByte {
