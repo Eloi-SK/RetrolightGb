@@ -36,6 +36,16 @@ internal fun Cpu.decRegisterPair(value: UShort): Pair<UByte, UByte> {
     return (new shr 8).toUByte() to (new and 0xFFu).toUByte()
 }
 
+internal fun Cpu.decHlAddress() {
+    val value = memory.readByte(hl)
+    val new = (value - 1u).toUByte()
+    memory.writeByte(hl, new)
+    setFlag(FLAG_N)
+    if (new == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+    if (value and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+    pc++; t += 12; m += 3
+}
+
 internal fun Cpu.incHlAddress() {
     val value = memory.readByte(hl)
     val new = (value + 1u).toUByte()
@@ -47,6 +57,33 @@ internal fun Cpu.incHlAddress() {
 }
 
 internal fun Cpu.incSp() { sp++; pc++; t += 8; m += 2 }
+
+internal fun Cpu.daa() {
+    var value = a.toInt()
+    if (!isFlagSet(FLAG_N)) {
+        if (isFlagSet(FLAG_H) || (value and 0x0F) > 9) value += 0x06
+        if (isFlagSet(FLAG_C) || value > 0x9F) { value += 0x60; setFlag(FLAG_C) }
+    } else {
+        if (isFlagSet(FLAG_H)) value -= 0x06
+        if (isFlagSet(FLAG_C)) value -= 0x60
+    }
+    unsetFlag(FLAG_H)
+    a = (value and 0xFF).toUByte()
+    if (a == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+    pc++; t += 4; m++
+}
+
+internal fun Cpu.scf() {
+    unsetFlag(FLAG_N); unsetFlag(FLAG_H); setFlag(FLAG_C)
+    pc++; t += 4; m++
+}
+
+internal fun Cpu.ccf() {
+    val carry = !isFlagSet(FLAG_C)
+    unsetFlag(FLAG_N); unsetFlag(FLAG_H)
+    if (carry) setFlag(FLAG_C) else unsetFlag(FLAG_C)
+    pc++; t += 4; m++
+}
 
 internal fun Cpu.cpl() {
     a = a.inv()

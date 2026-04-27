@@ -1,6 +1,8 @@
 package com.eloi.retrolightgb.core.cpu.ops
 
 import com.eloi.retrolightgb.core.cpu.Cpu
+import com.eloi.retrolightgb.core.cpu.Cpu.Companion.FLAG_C
+import com.eloi.retrolightgb.core.cpu.Cpu.Companion.FLAG_H
 
 internal fun Cpu.loadRegisterFromHlAddress(): UByte {
     val value = memory.readByte(hl)
@@ -103,6 +105,39 @@ internal fun Cpu.loadAHlInc() {
     val inc = hl + 1u
     h = (inc shr 8).toUByte(); l = (inc and 0xFFu).toUByte()
     pc++; t += 8; m += 2
+}
+
+internal fun Cpu.loadN16Sp() {
+    val low = memory.readByte((pc + 1u).toUShort())
+    val high = memory.readByte((pc + 2u).toUShort())
+    val address = combinateBytes(high, low)
+    memory.writeByte(address, (sp and 0xFFu).toUByte())
+    memory.writeByte((address + 1u).toUShort(), (sp.toUInt() shr 8).toUByte())
+    pc = (pc + 3u).toUShort(); t += 20; m += 5
+}
+
+internal fun Cpu.loadAHlDec() {
+    a = memory.readByte(hl)
+    val dec = hl - 1u
+    h = (dec shr 8).toUByte(); l = (dec and 0xFFu).toUByte()
+    pc++; t += 8; m += 2
+}
+
+internal fun Cpu.loadSpHl() {
+    sp = hl
+    pc++; t += 8; m += 2
+}
+
+internal fun Cpu.loadHlSpE8() {
+    val offset = memory.readByte((pc + 1u).toUShort()).toByte().toInt()
+    val base = sp.toInt()
+    val result = base + offset
+    resetFlags()
+    if (((base xor offset xor result) and 0x10) != 0) setFlag(FLAG_H)
+    if (((base xor offset xor result) and 0x100) != 0) setFlag(FLAG_C)
+    h = ((result shr 8) and 0xFF).toUByte()
+    l = (result and 0xFF).toUByte()
+    pc = (pc + 2u).toUShort(); t += 12; m += 3
 }
 
 internal fun Cpu.pushPairRegister(high: UByte, low: UByte) {

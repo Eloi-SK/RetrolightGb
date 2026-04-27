@@ -12,6 +12,35 @@ internal fun Cpu.nop() {
     m++
 }
 
+internal fun Cpu.rlca() {
+    val bit7 = (a.toInt() shr 7) and 0x01
+    a = ((a.toInt() shl 1) or bit7).toUByte()
+    resetFlags()
+    if (bit7 != 0) setFlag(FLAG_C)
+    pc++; t += 4; m++
+}
+
+internal fun Cpu.rrca() {
+    val bit0 = a.toInt() and 0x01
+    a = ((a.toInt() ushr 1) or (bit0 shl 7)).toUByte()
+    resetFlags()
+    if (bit0 != 0) setFlag(FLAG_C)
+    pc++; t += 4; m++
+}
+
+internal fun Cpu.rra() {
+    val oldCarry = if (isFlagSet(FLAG_C)) 1 else 0
+    val newCarry = a.toInt() and 0x01
+    a = ((a.toInt() ushr 1) or (oldCarry shl 7)).toUByte()
+    resetFlags()
+    if (newCarry != 0) setFlag(FLAG_C)
+    pc++; t += 4; m++
+}
+
+internal fun Cpu.stop() {
+    pc = (pc + 2u).toUShort(); t += 4; m++
+}
+
 internal fun Cpu.rla() {
     val oldCarryFlag = isFlagSet(FLAG_C)
     val carryFlag = (0b1000_0000.toUInt() and a.toUInt()) != 0u
