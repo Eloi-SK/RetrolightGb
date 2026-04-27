@@ -110,6 +110,27 @@ internal fun Cpu.call() {
     m += 6
 }
 
+private fun Cpu.callIf(condition: Boolean) {
+    val low = memory.readByte((pc + 1u).toUShort())
+    val high = memory.readByte((pc + 2u).toUShort())
+    if (condition) {
+        val targetAddress = combinateBytes(high, low)
+        val returnAddress = (pc + 3u).toUShort()
+        sp--; memory.writeByte(sp, (returnAddress.toInt() shr 8).toUByte())
+        sp--; memory.writeByte(sp, (returnAddress.toInt() and 0xFF).toUByte())
+        pc = targetAddress
+        t += 24; m += 6
+    } else {
+        pc = (pc + 3u).toUShort()
+        t += 12; m += 3
+    }
+}
+
+internal fun Cpu.callNz() = callIf(!isFlagSet(FLAG_Z))
+internal fun Cpu.callZ()  = callIf(isFlagSet(FLAG_Z))
+internal fun Cpu.callNc() = callIf(!isFlagSet(FLAG_C))
+internal fun Cpu.callC()  = callIf(isFlagSet(FLAG_C))
+
 internal fun Cpu.ret() {
     val low = memory.readByte(sp)
     val high = memory.readByte((sp + 1u).toUShort())
