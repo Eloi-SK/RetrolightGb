@@ -18,6 +18,8 @@ fun GameBoyScreen(
     val scale = 4
 
     Canvas(modifier = modifier.size((160 * scale).dp, (144 * scale).dp)) {
+        val pixelW = size.width / 160f
+        val pixelH = size.height / 144f
         frameBuffer.forEachIndexed { y, row ->
             row.forEachIndexed { x, colorId ->
                 val color = when (colorId) {
@@ -30,8 +32,8 @@ fun GameBoyScreen(
 
                 drawRect(
                     color = color,
-                    topLeft = Offset(x = x * scale.toFloat(), y = y * scale.toFloat()),
-                    size = Size(width = scale.toFloat(), height = scale.toFloat())
+                    topLeft = Offset(x = x * pixelW, y = y * pixelH),
+                    size = Size(width = pixelW, height = pixelH)
                 )
             }
         }

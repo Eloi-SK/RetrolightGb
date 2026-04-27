@@ -1,14 +1,23 @@
 package com.eloi.retrolightgb
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+
+import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.eloi.retrolightgb.core.cpu.Cpu
+import com.eloi.retrolightgb.core.memory.Memory
 import com.eloi.retrolightgb.di.LocalDI
 import com.eloi.retrolightgb.di.di
 import com.eloi.retrolightgb.di.rememberInstance
+import com.eloi.retrolightgb.ui.SerialTerminal
 import java.io.BufferedWriter
 import java.io.FileWriter
 
@@ -24,6 +33,9 @@ fun main() = application {
             }
         } else null
 
+        var openRom by remember { mutableStateOf<(() -> Unit)?>(null) }
+        var showTerminal by remember { mutableStateOf(false) }
+
         Window(
             onCloseRequest = {
                 traceFileWriter?.flush()
@@ -32,7 +44,29 @@ fun main() = application {
                 exitApplication()
             },
             title = "RetrolightGb",
-            state = rememberWindowState(width = 640.dp, height = 576.dp)
-        ) { App() }
+            state = rememberWindowState(width = (160 * 4).dp, height = (144 * 4).dp)
+        ) {
+            MenuBar {
+                Menu("File", mnemonic = 'F') {
+                    Item("Open", mnemonic = 'O', onClick = { openRom?.invoke() })
+                    Item("Exit", onClick = ::exitApplication)
+                }
+                Menu("View", mnemonic = 'V') {
+                    Item("Terminal", mnemonic = 'T', onClick = { showTerminal = true })
+                }
+            }
+            App(onOpenRomReady = { openRom = it })
+        }
+
+        if (showTerminal) {
+            val memory = rememberInstance<Memory>()
+            Window(
+                onCloseRequest = { showTerminal = false },
+                title = "Serial Terminal",
+                state = rememberWindowState(size = DpSize.Unspecified)
+            ) {
+                SerialTerminal(output = memory.serialOutput)
+            }
+        }
     }
 }

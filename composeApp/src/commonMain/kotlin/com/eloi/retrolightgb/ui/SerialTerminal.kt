@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -30,7 +31,7 @@ fun SerialTerminal(
 
     Box(
         modifier = modifier
-            .fillMaxWidth()
+            .width(350.dp)
             .height(160.dp)
             .background(Color(0xFF1E1E1E))
             .padding(8.dp)
