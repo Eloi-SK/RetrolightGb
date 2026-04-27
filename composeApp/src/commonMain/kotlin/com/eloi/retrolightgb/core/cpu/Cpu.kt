@@ -28,6 +28,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     var lastT: Int get() = registers.lastT; set(v) { registers.lastT = v }
     var lastM: Int get() = registers.lastM; set(v) { registers.lastM = v }
     var imeEnabled: Boolean get() = registers.imeEnabled; set(v) { registers.imeEnabled = v }
+    var pendingIme: Boolean get() = registers.pendingIme; set(v) { registers.pendingIme = v }
     var halted: Boolean get() = registers.halted; set(v) { registers.halted = v }
     val hl: UShort get() = registers.hl
     val bc: UShort get() = registers.bc
@@ -508,6 +509,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xD5u to { pushPairRegister(d, e) },
         0xD6u to { subN8() },
         0xD7u to { rst(0x0010u) },
+        0xD8u to { retC() },
         0xD9u to { retI() },
         0xDCu to { callC() },
         0xDEu to { sbcAN8() },
@@ -517,13 +519,15 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xE2u to { loadFF00C() },
         0xE5u to { pushPairRegister(h, l) },
         0xE6u to { andAN8() },
-        0xEEu to { xorAN8() },
         0xE7u to { rst(0x0020u) },
+        0xE8u to { addSpE8() },
         0xE9u to { jpHl() },
         0xEAu to { loadN16A() },
+        0xEEu to { xorAN8() },
         0xEFu to { rst(0x0028u) },
         0xF0u to { loadAFF00N8() },
-        0xF1u to { popPairRegister().destructureAssign(::a, ::f) },
+        0xF1u to { popPairRegister().also { (high, low) -> a = high; f = low and 0xF0u.toUByte() } },
+        0xF2u to { loadAFF00C() },
         0xF3u to { di() },
         0xF5u to { pushPairRegister(a, f) },
         0xF6u to { orAN8() },
@@ -539,6 +543,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     fun step() {
         lastT = t
         lastM = m
+        if (pendingIme) { imeEnabled = true; pendingIme = false }
         if (halted) { t += 4; m++; handleInterrupts(); return }
         if (isDebug) tracer.step()
         val opcode = memory.readByte(pc)
@@ -559,7 +564,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     private fun handleInterrupts() {
         val ifReg = memory.readByte(0xFF0Fu)
         val ieReg = memory.readByte(0xFFFFu)
-        val pendingAndEnabled = ifReg and ieReg
+        val pendingAndEnabled = (ifReg and ieReg) and 0x1Fu.toUByte()
         if (pendingAndEnabled == 0u.toUByte()) return
         if (halted) halted = false
         if (!imeEnabled) return

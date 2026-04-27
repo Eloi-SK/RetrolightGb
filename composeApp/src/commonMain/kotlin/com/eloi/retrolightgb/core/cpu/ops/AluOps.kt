@@ -58,6 +58,17 @@ internal fun Cpu.incHlAddress() {
 
 internal fun Cpu.incSp() { sp++; pc++; t += 8; m += 2 }
 
+internal fun Cpu.addSpE8() {
+    val offset = memory.readByte((pc + 1u).toUShort()).toByte().toInt()
+    val base = sp.toInt()
+    val result = base + offset
+    resetFlags()
+    if (((base xor offset xor result) and 0x10) != 0) setFlag(FLAG_H)
+    if (((base xor offset xor result) and 0x100) != 0) setFlag(FLAG_C)
+    sp = (result and 0xFFFF).toUShort()
+    pc = (pc + 2u).toUShort(); t += 16; m += 4
+}
+
 internal fun Cpu.daa() {
     var value = a.toInt()
     if (!isFlagSet(FLAG_N)) {
@@ -157,17 +168,18 @@ internal fun Cpu.subRegister(value: UByte) {
     val result = a - value
     setFlag(FLAG_N)
     if (result == 0u) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-    if (result and 0x0Fu == 0u) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+    if ((a.toInt() and 0x0F) < (value.toInt() and 0x0F)) setFlag(FLAG_H) else unsetFlag(FLAG_H)
     if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
     a = result.toUByte()
     pc++; t += 4; m++
 }
 
 internal fun Cpu.cpHl() {
-    val result = a - memory.readByte(hl)
+    val value = memory.readByte(hl)
+    val result = a - value
     setFlag(FLAG_N)
-    if (result.toUByte() == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-    if (result.toUByte() and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+    if (result == 0u) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+    if ((a.toInt() and 0x0F) < (value.toInt() and 0x0F)) setFlag(FLAG_H) else unsetFlag(FLAG_H)
     if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
     pc++; t += 8; m += 2
 }
@@ -175,8 +187,8 @@ internal fun Cpu.cpHl() {
 internal fun Cpu.cpRegister(value: UByte) {
     val result = a - value
     setFlag(FLAG_N)
-    if (result.toUByte() == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-    if (result.toUByte() and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+    if (result == 0u) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+    if ((a.toInt() and 0x0F) < (value.toInt() and 0x0F)) setFlag(FLAG_H) else unsetFlag(FLAG_H)
     if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
     pc++; t += 4; m++
 }
@@ -256,7 +268,7 @@ internal fun Cpu.subHl() {
     val result = a - value
     setFlag(FLAG_N)
     if (result == 0u) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-    if (result and 0x0Fu == 0u) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+    if ((a.toInt() and 0x0F) < (value.toInt() and 0x0F)) setFlag(FLAG_H) else unsetFlag(FLAG_H)
     if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
     a = result.toUByte()
     pc++; t += 8; m += 2
@@ -300,7 +312,7 @@ internal fun Cpu.subN8() {
     val result = a - value
     setFlag(FLAG_N)
     if (result == 0u) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-    if (result and 0x0Fu == 0u) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+    if ((a.toInt() and 0x0F) < (value.toInt() and 0x0F)) setFlag(FLAG_H) else unsetFlag(FLAG_H)
     if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
     a = result.toUByte()
     pc = (pc + 2u).toUShort(); t += 8; m += 2
@@ -323,10 +335,11 @@ internal fun Cpu.orAN8() {
 }
 
 internal fun Cpu.cpImmediate() {
-    val result = a - memory.readByte((pc + 1u).toUShort())
+    val value = memory.readByte((pc + 1u).toUShort())
+    val result = a - value
     setFlag(FLAG_N)
-    if (result.toUByte() == 0u.toUByte()) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-    if (result.toUByte() and 0x0Fu.toUByte() == 0u.toUByte()) setFlag(FLAG_H) else unsetFlag(FLAG_H)
+    if (result == 0u) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
+    if ((a.toInt() and 0x0F) < (value.toInt() and 0x0F)) setFlag(FLAG_H) else unsetFlag(FLAG_H)
     if (result.toInt() < 0) setFlag(FLAG_C) else unsetFlag(FLAG_C)
     pc = (pc + 2u).toUShort(); t += 8; m += 2
 }

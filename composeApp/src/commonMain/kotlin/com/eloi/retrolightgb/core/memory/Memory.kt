@@ -37,7 +37,7 @@ class Memory {
             isBootRomEnabled && addr in 0 until bootRom.size -> bootRom[addr]
             addr in 0x0000..0x7FFF -> cartridge?.readByte(addr) ?: 0xFFu
             addr in 0xA000..0xBFFF -> cartridge?.readByte(addr) ?: 0xFFu
-            addr == 0xFF0F -> ifRegister
+            addr == 0xFF0F -> (ifRegister or 0xE0u).toUByte()
             addr == 0xFFFF -> ieRegister
             else -> ram[addr]
         }

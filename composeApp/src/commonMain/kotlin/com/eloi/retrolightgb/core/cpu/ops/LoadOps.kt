@@ -95,6 +95,11 @@ internal fun Cpu.loadFF00C() {
     pc++; t += 8; m += 2
 }
 
+internal fun Cpu.loadAFF00C() {
+    a = memory.readByte(combinateBytes(high = 0xFFu, low = c))
+    pc++; t += 8; m += 2
+}
+
 internal fun Cpu.ldHLN8() {
     memory.writeByte(hl, memory.readByte((pc + 1u).toUShort()))
     pc = (pc + 2u).toUShort(); t += 12; m += 3

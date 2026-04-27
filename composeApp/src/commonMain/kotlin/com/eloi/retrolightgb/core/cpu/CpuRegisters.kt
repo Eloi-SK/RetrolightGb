@@ -17,6 +17,7 @@ class CpuRegisters {
     var lastT: Int = 0
     var lastM: Int = 0
     var imeEnabled: Boolean = false
+    var pendingIme: Boolean = false
     var halted: Boolean = false
 
     val hl: UShort get() = combinateBytes(h, l)

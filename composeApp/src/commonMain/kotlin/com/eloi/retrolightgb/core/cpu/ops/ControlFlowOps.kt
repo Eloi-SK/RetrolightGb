@@ -186,6 +186,7 @@ private fun Cpu.retIf(condition: Boolean) {
 internal fun Cpu.retZ()  = retIf(isFlagSet(FLAG_Z))
 internal fun Cpu.retNz() = retIf(!isFlagSet(FLAG_Z))
 internal fun Cpu.retNc() = retIf(!isFlagSet(FLAG_C))
+internal fun Cpu.retC()  = retIf(isFlagSet(FLAG_C))
 
 internal fun Cpu.retI() {
     val low = memory.readByte(sp)
@@ -217,13 +218,14 @@ internal fun Cpu.decSp() { sp--; pc++; t += 8; m += 2 }
 
 internal fun Cpu.di() {
     imeEnabled = false
+    pendingIme = false
     pc++
     t += 4
     m++
 }
 
 internal fun Cpu.ei() {
-    imeEnabled = true
+    pendingIme = true
     pc++
     t += 4
     m++
