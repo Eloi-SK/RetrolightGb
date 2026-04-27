@@ -37,7 +37,9 @@ fun App() {
             try {
                 while (true) {
                     cpu.step()
-                    ppu.tick(cpu.t - cpu.lastT)
+                    val cycles = cpu.t - cpu.lastT
+                    ppu.tick(cycles)
+                    memory.tickTimer(cycles)
                 }
             } catch (e: NotImplementedError) {
                 println("CPU CRASH: ${e.message}")

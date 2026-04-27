@@ -18,6 +18,9 @@ class Memory {
     var serialOutput by mutableStateOf("")
         private set
 
+    private var divCounter: Int = 0
+    private var timerAccumulator: Int = 0
+
     fun load(rom: ByteArray) {
         val uRom = UByteArray(rom.size) { rom[it].toUByte() }
         cartridge = CartridgeFactory.create(uRom)
@@ -52,6 +55,7 @@ class Memory {
         when (addr) {
             in 0x0000..0x7FFF -> cartridge?.writeByte(addr, value)
             in 0xA000..0xBFFF -> cartridge?.writeByte(addr, value)
+            0xFF04 -> { divCounter = 0; timerAccumulator = 0; ram[addr] = 0u }
             0xFF0F -> ifRegister = value
             0xFFFF -> ieRegister = value
             // Serial transfer: bit 7 = start, bit 0 = internal clock
@@ -61,9 +65,37 @@ class Memory {
                     serialBuffer.append(ram[0xFF01].toInt().toChar())
                     serialOutput = serialBuffer.toString()
                     ram[addr] = value and 0x7Fu.toUByte() // clear transfer-start bit
+                    requestInterrupt(InterruptType.Serial)
                 }
             }
             else -> ram[addr] = value
+        }
+    }
+
+    fun tickTimer(cycles: Int) {
+        divCounter += cycles
+        ram[0xFF04] = ((divCounter shr 8) and 0xFF).toUByte()
+
+        val tac = ram[0xFF07].toInt()
+        if ((tac and 0x04) == 0) return
+
+        val clockFreq = when (tac and 0x03) {
+            0 -> 1024
+            1 -> 16
+            2 -> 64
+            else -> 256
+        }
+
+        timerAccumulator += cycles
+        while (timerAccumulator >= clockFreq) {
+            timerAccumulator -= clockFreq
+            val tima = ram[0xFF05].toInt()
+            if (tima == 0xFF) {
+                ram[0xFF05] = ram[0xFF06]
+                requestInterrupt(InterruptType.Timer)
+            } else {
+                ram[0xFF05] = (tima + 1).toUByte()
+            }
         }
     }
 
