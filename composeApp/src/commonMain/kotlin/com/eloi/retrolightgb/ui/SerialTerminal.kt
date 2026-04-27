@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,12 +36,14 @@ fun SerialTerminal(
             .padding(8.dp)
             .verticalScroll(scrollState),
     ) {
-        Text(
-            text = output,
-            color = Color(0xFF00FF00),
-            fontFamily = FontFamily.Monospace,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-        )
+        SelectionContainer {
+            Text(
+                text = output,
+                color = Color(0xFF00FF00),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+            )
+        }
     }
 }
