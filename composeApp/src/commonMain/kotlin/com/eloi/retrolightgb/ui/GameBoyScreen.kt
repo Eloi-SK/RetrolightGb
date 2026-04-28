@@ -15,7 +15,7 @@ fun GameBoyScreen(
     frameBuffer: Array<IntArray>,
     modifier: Modifier = Modifier,
 ) {
-    val scale = 4
+    val scale = 2
 
     Canvas(modifier = modifier.size((160 * scale).dp, (144 * scale).dp)) {
         val pixelW = size.width / 160f

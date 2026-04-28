@@ -49,7 +49,7 @@ fun main() = application {
                 exitApplication()
             },
             title = "RetrolightGb",
-            state = rememberWindowState(width = (160 * 4).dp, height = (144 * 4).dp),
+            state = rememberWindowState(width = (160 * 2).dp, height = (144 * 2).dp),
             onKeyEvent = { event ->
                 val button = when (event.key) {
                     Key.DirectionRight -> JoypadButton.Right
