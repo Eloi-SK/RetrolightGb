@@ -3,11 +3,11 @@ package com.eloi.retrolightgb.ui.compose
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
-import androidx.fragment.app.FragmentActivity
 import com.eloi.retrolightgb.ui.FilePickerLauncher
 
 @Composable
@@ -25,8 +25,8 @@ actual fun rememberFilePickerLauncher(onResult: (ByteArray) -> Unit): FilePicker
     }
 }
 
-private val Context.activity: FragmentActivity
-    get() = unwrapped as FragmentActivity
+private val Context.activity: ComponentActivity
+    get() = unwrapped as ComponentActivity
 
 private val Context.unwrapped: Context
     get() {
