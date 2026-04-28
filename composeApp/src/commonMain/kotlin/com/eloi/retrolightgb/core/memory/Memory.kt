@@ -33,8 +33,23 @@ class Memory {
     }
 
     fun load(rom: ByteArray) {
+        reset()
         val uRom = UByteArray(rom.size) { rom[it].toUByte() }
         cartridge = CartridgeFactory.create(uRom)
+    }
+
+    fun reset() {
+        ram.fill(0u)
+        isBootRomEnabled = true
+        ifRegister = 0u
+        ieRegister = 0u
+        divCounter = 0
+        timerAccumulator = 0
+        joypadSelection = 0x30u
+        pressedButtons.clear()
+        serialBuffer.clear()
+        serialOutput = ""
+        cartridge = null
     }
 
     fun requestInterrupt(type: InterruptType) {

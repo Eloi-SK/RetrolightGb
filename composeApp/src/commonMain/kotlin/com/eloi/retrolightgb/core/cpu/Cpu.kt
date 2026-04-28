@@ -594,6 +594,15 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     internal fun unsetFlag(flag: UByte) = registers.unsetFlag(flag)
     internal fun isFlagSet(flag: UByte) = registers.isFlagSet(flag)
 
+    fun reset() {
+        registers.a = 0u; registers.b = 0u; registers.c = 0u; registers.d = 0u
+        registers.e = 0u; registers.f = 0u; registers.h = 0u; registers.l = 0u
+        registers.pc = 0u; registers.sp = 0u
+        registers.t = 0; registers.m = 0; registers.lastT = 0; registers.lastM = 0
+        registers.imeEnabled = false; registers.pendingIme = false; registers.halted = false
+        tracer.clear()
+    }
+
     private fun <A, B> Pair<A, B>.destructureAssign(a: KMutableProperty0<A>, b: KMutableProperty0<B>) {
         a.set(this.first)
         b.set(this.second)

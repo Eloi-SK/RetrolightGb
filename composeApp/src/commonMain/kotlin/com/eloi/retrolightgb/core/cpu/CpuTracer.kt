@@ -36,6 +36,12 @@ class CpuTracer(private val registers: CpuRegisters, private val memory: Memory)
         }
     }
 
+    fun clear() {
+        buffer.fill(null)
+        head = 0
+        full = false
+    }
+
     private fun record(msg: String) {
         val w = writer
         if (w != null) {

@@ -15,6 +15,14 @@ class Ppu(private val memory: Memory) {
     var frameBuffer by mutableStateOf(_frameBuffer)
         private set
 
+    fun reset() {
+        scanLineCycles = 0
+        currentLine = 0
+        mode = 2
+        for (row in _frameBuffer) row.fill(0)
+        frameBuffer = Array(144) { _frameBuffer[it].copyOf() }
+    }
+
     fun tick(cycles: Int) {
         var cyclesToProcess = cycles
 

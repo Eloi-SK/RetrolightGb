@@ -2,6 +2,7 @@ package com.eloi.retrolightgb
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.eloi.retrolightgb.core.cpu.Cpu
 import com.eloi.retrolightgb.core.memory.Memory
@@ -10,6 +11,7 @@ import com.eloi.retrolightgb.di.rememberInstance
 import com.eloi.retrolightgb.ui.GameBoyScreen
 import com.eloi.retrolightgb.ui.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.nanoseconds
@@ -21,10 +23,15 @@ fun App(onOpenRomReady: (openRom: () -> Unit) -> Unit = {}) {
     val cpu = rememberInstance<Cpu>()
     val ppu = rememberInstance<Ppu>()
     val scope = rememberCoroutineScope()
+    val emulationJob = remember { mutableListOf<Job>() }
 
     val filePickerLauncher = rememberFilePickerLauncher { bytes ->
+        emulationJob.firstOrNull()?.cancel()
+        emulationJob.clear()
+        cpu.reset()
+        ppu.reset()
         memory.load(rom = bytes)
-        scope.launch(Dispatchers.Default) {
+        emulationJob += scope.launch(Dispatchers.Default) {
             val cyclesPerFrame = 70_224           // 456 cycles/line × 154 lines
             val frameDuration = 16_742_706.nanoseconds  // 1s / 59.7275 FPS
             var cycleBudget = 0
