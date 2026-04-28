@@ -18,7 +18,7 @@ import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.TimeSource
 
 @Composable
-fun App(onOpenRomReady: (openRom: () -> Unit) -> Unit = {}) {
+fun GameBoy(onOpenRomReady: (openRom: () -> Unit) -> Unit = {}) {
     val memory = rememberInstance<Memory>()
     val cpu = rememberInstance<Cpu>()
     val ppu = rememberInstance<Ppu>()

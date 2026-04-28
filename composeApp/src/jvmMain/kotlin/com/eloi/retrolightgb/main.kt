@@ -78,7 +78,7 @@ fun main() = application {
                     Item("Terminal", mnemonic = 'T', onClick = { showTerminal = true })
                 }
             }
-            App(onOpenRomReady = { openRom = it })
+            GameBoy(onOpenRomReady = { openRom = it })
         }
 
         if (showTerminal) {
