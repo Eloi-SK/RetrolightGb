@@ -123,45 +123,90 @@ class Ppu(private val memory: Memory) {
 
     private fun renderScanLine(line: Int) {
         val lcdc = memory.readByte(0xFF40u)
+
+        // bgColorIds tracks raw BG color index (0-3) per pixel for sprite priority
+        val bgColorIds = IntArray(160)
+
         val bgEnabled = (lcdc and 0x01u) != 0u.toUByte()
-        if (!bgEnabled) return
+        if (bgEnabled) {
+            val scy = memory.readByte(0xFF42u).toInt()
+            val scx = memory.readByte(0xFF43u).toInt()
+            val usingTileSet8000 = (lcdc and 0x10u) != 0u.toUByte()
+            val usingBgMap9C00 = (lcdc and 0x08u) != 0u.toUByte()
+            val tileMapBase = if (usingBgMap9C00) 0x9C00 else 0x9800
+            val tileDataBase = if (usingTileSet8000) 0x8000 else 0x8800
+            val yInBg = (line + scy) and 0xFF
+            val tileRow = yInBg / 8
+            val bgp = memory.readByte(0xFF47u).toInt()
 
-        val scy = memory.readByte(0xFF42u).toInt()
-        val scx = memory.readByte(0xFF43u).toInt()
+            for (x in 0 until 160) {
+                val xInBg = (x + scx) and 0xFF
+                val tileId = memory.readByte((tileMapBase + tileRow * 32 + xInBg / 8).toUShort())
+                val tileNum = if (usingTileSet8000) tileId.toInt() and 0xFF else tileId.toByte().toInt() + 128
+                val tileAddr = tileDataBase + tileNum * 16 + (yInBg % 8) * 2
+                val data1 = memory.readByte(tileAddr.toUShort())
+                val data2 = memory.readByte((tileAddr + 1).toUShort())
+                val bit = 7 - (xInBg % 8)
+                val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
+                bgColorIds[x] = colorId
+                _frameBuffer[line][x] = (bgp shr (colorId * 2)) and 0x03
+            }
+        }
 
-        val usingTileSet8000 = (lcdc and 0x10u) != 0u.toUByte()
-        val usingBgMap0C00 = (lcdc and 0x08u) != 0u.toUByte()
+        val spritesEnabled = (lcdc and 0x02u) != 0u.toUByte()
+        if (!spritesEnabled) return
 
-        val tileMapBase = if (usingBgMap0C00) 0x9C00 else 0x9800
-        val tileDataBase = if (usingTileSet8000) 0x8000 else 0x8800
+        val tallSprites = (lcdc and 0x04u) != 0u.toUByte()
+        val spriteHeight = if (tallSprites) 16 else 8
 
-        val yInBg = (line + scy) and 0xFF
-        val tileRow = yInBg / 8
+        data class SpriteEntry(val y: Int, val x: Int, val tileNum: Int, val attrs: Int)
+        val visibleSprites = mutableListOf<SpriteEntry>()
 
-        for (x in 0 until 160) {
-            val xInBg = (x + scx) and 0xFF
-            val tileCol = xInBg / 8
-            val tileIndexAddress = tileMapBase + tileRow * 32 + tileCol
+        for (i in 0 until 40) {
+            if (visibleSprites.size >= 10) break
+            val oamBase = 0xFE00 + i * 4
+            val spriteY = memory.readByte(oamBase.toUShort()).toInt() - 16
+            if (line < spriteY || line >= spriteY + spriteHeight) continue
+            visibleSprites.add(SpriteEntry(
+                y = spriteY,
+                x = memory.readByte((oamBase + 1).toUShort()).toInt() - 8,
+                tileNum = memory.readByte((oamBase + 2).toUShort()).toInt() and 0xFF,
+                attrs = memory.readByte((oamBase + 3).toUShort()).toInt()
+            ))
+        }
 
-            val tileId = memory.readByte(tileIndexAddress.toUShort())
-            val tileNum = if (usingTileSet8000) {
-                tileId.toInt() and 0xFF
+        // Stable sort by X; draw reversed so lower-X / lower-OAM-index wins (drawn on top)
+        visibleSprites.sortBy { it.x }
+
+        for (sprite in visibleSprites.reversed()) {
+            val xFlip   = (sprite.attrs and 0x20) != 0
+            val yFlip   = (sprite.attrs and 0x40) != 0
+            val behindBg = (sprite.attrs and 0x80) != 0
+            val obp = memory.readByte(if ((sprite.attrs and 0x10) != 0) 0xFF49u else 0xFF48u).toInt()
+
+            var lineInSprite = line - sprite.y
+            if (yFlip) lineInSprite = spriteHeight - 1 - lineInSprite
+
+            val (spriteTileNum, spriteTileRow) = if (tallSprites) {
+                val baseTile = sprite.tileNum and 0xFE
+                if (lineInSprite < 8) Pair(baseTile, lineInSprite) else Pair(baseTile or 0x01, lineInSprite - 8)
             } else {
-                tileId.toByte().toInt() + 128
+                Pair(sprite.tileNum, lineInSprite)
             }
 
-            val tileAddress = tileDataBase + tileNum * 16
-            val lineInTitle = yInBg % 8
-            val data1 = memory.readByte((tileAddress + lineInTitle * 2).toUShort())
-            val data2 = memory.readByte((tileAddress + lineInTitle * 2 + 1).toUShort())
+            val tileAddr = 0x8000 + spriteTileNum * 16 + spriteTileRow * 2
+            val data1 = memory.readByte(tileAddr.toUShort())
+            val data2 = memory.readByte((tileAddr + 1).toUShort())
 
-            val bit = 7 - (xInBg % 8)
-            val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
-
-            val bgp = memory.readByte(0xFF47u).toInt()
-            val shade = (bgp shr (colorId * 2)) and 0x03
-
-            _frameBuffer[line][x] = shade
+            for (px in 0 until 8) {
+                val screenX = sprite.x + px
+                if (screenX < 0 || screenX >= 160) continue
+                val bit = if (xFlip) px else 7 - px
+                val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
+                if (colorId == 0) continue                          // color 0 = transparent
+                if (behindBg && bgColorIds[screenX] != 0) continue // behind non-zero BG pixels
+                _frameBuffer[line][screenX] = (obp shr (colorId * 2)) and 0x03
+            }
         }
     }
 

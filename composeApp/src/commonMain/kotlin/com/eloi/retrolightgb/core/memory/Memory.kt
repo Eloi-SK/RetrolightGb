@@ -67,7 +67,7 @@ class Memory {
                 }
                 (0xC0 or joypadSelection.toInt() or nibble).toUByte()
             }
-            addr == 0xFF0F -> (ifRegister or 0xE0u).toUByte()
+            addr == 0xFF0F -> (ifRegister or 0xE0u)
             addr == 0xFFFF -> ieRegister
             else -> ram[addr]
         }
@@ -84,6 +84,10 @@ class Memory {
             in 0xA000..0xBFFF -> cartridge?.writeByte(addr, value)
             0xFF00 -> joypadSelection = value and 0x30u.toUByte()
             0xFF04 -> { divCounter = 0; timerAccumulator = 0; ram[addr] = 0u }
+            0xFF46 -> {
+                val srcBase = value.toInt() shl 8
+                for (i in 0 until 160) ram[0xFE00 + i] = readByte((srcBase + i).toUShort())
+            }
             0xFF0F -> ifRegister = value
             0xFFFF -> ieRegister = value
             // Serial transfer: bit 7 = start, bit 0 = internal clock
