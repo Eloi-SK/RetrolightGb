@@ -43,6 +43,7 @@ fun main() = application {
 
         Window(
             onCloseRequest = {
+                memory.save()
                 traceFileWriter?.flush()
                 traceFileWriter?.close()
                 if (cpu.isDebug) println("Last instructions:\n${cpu.dumpTrace()}")

@@ -1,6 +1,7 @@
 package com.eloi.retrolightgb
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -69,6 +70,8 @@ fun GameBoy(onOpenRomReady: (openRom: () -> Unit) -> Unit = {}) {
             }
         }
     }
+
+    DisposableEffect(Unit) { onDispose { memory.save() } }
 
     SideEffect { onOpenRomReady(filePickerLauncher::launch) }
 

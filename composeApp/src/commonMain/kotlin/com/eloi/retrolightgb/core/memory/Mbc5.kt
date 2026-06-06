@@ -14,6 +14,12 @@ class Mbc5(private val rom: UByteArray) : Cartridge {
 
     private val romBank: Int get() = (romBankHi shl 8) or romBankLo
 
+    override fun saveRam(): ByteArray = ByteArray(ram.size) { ram[it].toByte() }
+    override fun loadRam(data: ByteArray) {
+        val len = minOf(data.size, ram.size)
+        for (i in 0 until len) ram[i] = data[i].toUByte()
+    }
+
     override fun readByte(address: Int): UByte = when (address) {
         in 0x0000..0x3FFF -> if (address < rom.size) rom[address] else 0xFFu
         in 0x4000..0x7FFF -> {

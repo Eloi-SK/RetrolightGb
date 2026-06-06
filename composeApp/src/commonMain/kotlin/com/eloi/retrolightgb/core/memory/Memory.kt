@@ -3,6 +3,7 @@ package com.eloi.retrolightgb.core.memory
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.eloi.retrolightgb.SaveManager
 import com.eloi.retrolightgb.core.apu.Apu
 import com.eloi.retrolightgb.core.cpu.InterruptType
 
@@ -14,6 +15,7 @@ class Memory(private val apu: Apu? = null) {
     private var ifRegister: UByte = 0u
     private var ieRegister: UByte = 0u
     private var cartridge: Cartridge? = null
+    private var saveName: String? = null
 
     private val serialBuffer = StringBuilder()
     var serialOutput by mutableStateOf("")
@@ -34,10 +36,30 @@ class Memory(private val apu: Apu? = null) {
     }
 
     fun load(rom: ByteArray) {
+        save()  // persist current game before replacing it
         reset()
         val uRom = UByteArray(rom.size) { rom[it].toUByte() }
+        saveName = extractRomTitle(uRom)
         cartridge = CartridgeFactory.create(uRom)
+        if (CartridgeFactory.hasBattery(uRom)) {
+            saveName?.let { name -> SaveManager.load(name)?.let { cartridge?.loadRam(it) } }
+        }
     }
+
+    fun save() {
+        val name = saveName ?: return
+        val data = cartridge?.saveRam() ?: return
+        SaveManager.save(name, data)
+    }
+
+    private fun extractRomTitle(rom: UByteArray): String =
+        (0x0134..0x0143)
+            .map { if (it < rom.size) rom[it].toInt() else 0 }
+            .takeWhile { it != 0 }
+            .joinToString("") { it.toChar().toString() }
+            .trim()
+            .filter { it.isLetterOrDigit() || it == '_' || it == '-' }
+            .ifEmpty { "unknown" }
 
     fun reset() {
         ram.fill(0u)
@@ -51,6 +73,7 @@ class Memory(private val apu: Apu? = null) {
         serialBuffer.clear()
         serialOutput = ""
         cartridge = null
+        saveName = null
     }
 
     fun requestInterrupt(type: InterruptType) {

@@ -32,6 +32,12 @@ class Mbc1(private val rom: UByteArray) : Cartridge {
         else -> 0xFFu
     }
 
+    override fun saveRam(): ByteArray = ByteArray(ram.size) { ram[it].toByte() }
+    override fun loadRam(data: ByteArray) {
+        val len = minOf(data.size, ram.size)
+        for (i in 0 until len) ram[i] = data[i].toUByte()
+    }
+
     override fun writeByte(address: Int, value: UByte) {
         when (address) {
             in 0x0000..0x1FFF -> ramEnabled = value.toInt() and 0x0F == 0x0A

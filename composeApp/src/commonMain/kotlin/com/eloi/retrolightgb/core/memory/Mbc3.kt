@@ -32,6 +32,58 @@ class Mbc3(private val rom: UByteArray) : Cartridge {
     private var rtcCycles = 0
     private val CYCLES_PER_SECOND = 4_194_304
 
+    // Save format: [32KB RAM][S][M][H][DL][DH][8-byte unix timestamp little-endian]
+    override fun saveRam(): ByteArray {
+        val ramBytes = ByteArray(ram.size) { ram[it].toByte() }
+        val ts = currentUnixSeconds()
+        return ramBytes + byteArrayOf(
+            rtcS.toByte(), rtcM.toByte(), rtcH.toByte(), rtcDL.toByte(), rtcDH.toByte(),
+            (ts and 0xFF).toByte(), ((ts shr 8) and 0xFF).toByte(),
+            ((ts shr 16) and 0xFF).toByte(), ((ts shr 24) and 0xFF).toByte(),
+            ((ts shr 32) and 0xFF).toByte(), ((ts shr 40) and 0xFF).toByte(),
+            ((ts shr 48) and 0xFF).toByte(), ((ts shr 56) and 0xFF).toByte()
+        )
+    }
+
+    override fun loadRam(data: ByteArray) {
+        val len = minOf(data.size, ram.size)
+        for (i in 0 until len) ram[i] = data[i].toUByte()
+
+        val rtcOffset = ram.size
+        if (data.size < rtcOffset + 13) return
+
+        rtcS  = data[rtcOffset].toInt() and 0xFF
+        rtcM  = data[rtcOffset + 1].toInt() and 0xFF
+        rtcH  = data[rtcOffset + 2].toInt() and 0xFF
+        rtcDL = data[rtcOffset + 3].toInt() and 0xFF
+        rtcDH = data[rtcOffset + 4].toInt() and 0xFF
+
+        var savedTs = 0L
+        for (i in 0 until 8) savedTs = savedTs or ((data[rtcOffset + 5 + i].toLong() and 0xFF) shl (i * 8))
+
+        val elapsed = currentUnixSeconds() - savedTs
+        if (elapsed > 0 && rtcDH and 0x40 == 0) advanceBySeconds(elapsed)
+    }
+
+    // Convert current RTC state → total seconds → add elapsed → convert back.
+    // Handles arbitrarily large elapsed values without looping.
+    private fun advanceBySeconds(elapsed: Long) {
+        val currentDays = ((rtcDH and 0x01) shl 8) or rtcDL
+        val total = elapsed + rtcS + rtcM * 60L + rtcH * 3600L + currentDays * 86400L
+        rtcS = (total % 60).toInt()
+        val totalMin  = total / 60;  rtcM = (totalMin % 60).toInt()
+        val totalHour = totalMin / 60; rtcH = (totalHour % 24).toInt()
+        val totalDays = totalHour / 24
+        if (totalDays < 512L) {
+            rtcDL = (totalDays and 0xFF).toInt()
+            rtcDH = (rtcDH and 0xFE) or ((totalDays shr 8).toInt() and 0x01)
+        } else {
+            val wrapped = totalDays % 512L
+            rtcDL = (wrapped and 0xFF).toInt()
+            rtcDH = (rtcDH and 0x40) or 0x80 or ((wrapped shr 8).toInt() and 0x01)
+        }
+    }
+
     override fun tick(cycles: Int) {
         if (rtcDH and 0x40 != 0) return  // halted — clock stopped
         rtcCycles += cycles

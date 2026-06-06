@@ -9,6 +9,7 @@ import com.eloi.retrolightgb.ui.mobile.GameBoyMobileBox
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
+        SaveManager.init(applicationContext)
         super.onCreate(savedInstanceState)
 
         setContent {
