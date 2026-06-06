@@ -3,10 +3,11 @@ package com.eloi.retrolightgb.core.memory
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.eloi.retrolightgb.core.apu.Apu
 import com.eloi.retrolightgb.core.cpu.InterruptType
 
 @OptIn(ExperimentalUnsignedTypes::class)
-class Memory {
+class Memory(private val apu: Apu? = null) {
     private val ram = UByteArray(RAM_SIZE)
     private val bootRom: UByteArray = BootRom.data.map { byte -> byte.toUByte() }.toUByteArray()
     private var isBootRomEnabled = true
@@ -82,6 +83,7 @@ class Memory {
                 }
                 (0xC0 or joypadSelection.toInt() or nibble).toUByte()
             }
+            addr in 0xFF10..0xFF3F -> apu?.readByte(addr) ?: ram[addr]
             addr == 0xFF0F -> (ifRegister or 0xE0u)
             addr == 0xFFFF -> ieRegister
             else -> ram[addr]
@@ -103,6 +105,7 @@ class Memory {
                 val srcBase = value.toInt() shl 8
                 for (i in 0 until 160) ram[0xFE00 + i] = readByte((srcBase + i).toUShort())
             }
+            in 0xFF10..0xFF3F -> apu?.writeByte(addr, value) ?: run { ram[addr] = value }
             0xFF0F -> ifRegister = value
             0xFFFF -> ieRegister = value
             // Serial transfer: bit 7 = start, bit 0 = internal clock

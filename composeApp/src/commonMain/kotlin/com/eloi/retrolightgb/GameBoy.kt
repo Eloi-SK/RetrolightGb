@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import com.eloi.retrolightgb.core.apu.Apu
 import com.eloi.retrolightgb.core.cpu.Cpu
 import com.eloi.retrolightgb.core.memory.Memory
 import com.eloi.retrolightgb.core.ppu.Ppu
@@ -22,15 +23,19 @@ fun GameBoy(onOpenRomReady: (openRom: () -> Unit) -> Unit = {}) {
     val memory = rememberInstance<Memory>()
     val cpu = rememberInstance<Cpu>()
     val ppu = rememberInstance<Ppu>()
+    val apu = rememberInstance<Apu>()
     val scope = rememberCoroutineScope()
     val emulationJob = remember { mutableListOf<Job>() }
 
     val filePickerLauncher = rememberFilePickerLauncher { bytes ->
         emulationJob.firstOrNull()?.cancel()
+        apu.stop()
         emulationJob.clear()
         cpu.reset()
         ppu.reset()
         memory.load(rom = bytes)
+        apu.reset()
+        apu.start()
         emulationJob += scope.launch(Dispatchers.Default) {
             val cyclesPerFrame = 70_224           // 456 cycles/line × 154 lines
             val frameDuration = 16_742_706.nanoseconds  // 1s / 59.7275 FPS
@@ -43,6 +48,7 @@ fun GameBoy(onOpenRomReady: (openRom: () -> Unit) -> Unit = {}) {
                     val cycles = cpu.t - cpu.lastT
                     ppu.tick(cycles)
                     memory.tickTimer(cycles)
+                    apu.tick(cycles)
                     cycleBudget += cycles
 
                     if (cycleBudget >= cyclesPerFrame) {
