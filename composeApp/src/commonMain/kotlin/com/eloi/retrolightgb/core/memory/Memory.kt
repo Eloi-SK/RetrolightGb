@@ -123,6 +123,7 @@ class Memory(private val apu: Apu? = null) {
     }
 
     fun tickTimer(cycles: Int) {
+        cartridge?.tick(cycles)
         divCounter += cycles
         ram[0xFF04] = ((divCounter shr 8) and 0xFF).toUByte()
 
