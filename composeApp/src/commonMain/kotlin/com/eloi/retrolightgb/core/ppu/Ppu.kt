@@ -11,6 +11,7 @@ class Ppu(private val memory: Memory) {
     private var scanLineCycles: Int = 0
     private var currentLine: Int = 0
     private var mode: Int = 2
+    private var windowLineCounter: Int = 0
 
     var frameBuffer by mutableStateOf(_frameBuffer)
         private set
@@ -19,6 +20,7 @@ class Ppu(private val memory: Memory) {
         scanLineCycles = 0
         currentLine = 0
         mode = 2
+        windowLineCounter = 0
         for (row in _frameBuffer) row.fill(0)
         frameBuffer = Array(144) { _frameBuffer[it].copyOf() }
     }
@@ -104,6 +106,7 @@ class Ppu(private val memory: Memory) {
 
                         if (currentLine > 153) {
                             currentLine = 0
+                            windowLineCounter = 0
                             memory.writeByte(0xFF44u, 0u)
                             checkLyLycCoincidence()
                             mode = 2
@@ -137,15 +140,16 @@ class Ppu(private val memory: Memory) {
 
         val bgEnabled = (lcdc and 0x01u) != 0u.toUByte()
         if (bgEnabled) {
+            val usingTileSet8000 = (lcdc and 0x10u) != 0u.toUByte()
+            val tileDataBase = if (usingTileSet8000) 0x8000 else 0x8800
+            val bgp = memory.readByte(0xFF47u).toInt()
+
             val scy = memory.readByte(0xFF42u).toInt()
             val scx = memory.readByte(0xFF43u).toInt()
-            val usingTileSet8000 = (lcdc and 0x10u) != 0u.toUByte()
             val usingBgMap9C00 = (lcdc and 0x08u) != 0u.toUByte()
             val tileMapBase = if (usingBgMap9C00) 0x9C00 else 0x9800
-            val tileDataBase = if (usingTileSet8000) 0x8000 else 0x8800
             val yInBg = (line + scy) and 0xFF
             val tileRow = yInBg / 8
-            val bgp = memory.readByte(0xFF47u).toInt()
 
             for (x in 0 until 160) {
                 val xInBg = (x + scx) and 0xFF
@@ -158,6 +162,33 @@ class Ppu(private val memory: Memory) {
                 val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
                 bgColorIds[x] = colorId
                 _frameBuffer[line][x] = (bgp shr (colorId * 2)) and 0x03
+            }
+
+            // Window layer — drawn over BG, below sprites.
+            // On DMG, window requires LCDC bit 0 (bgEnabled) to be set as well.
+            val windowEnabled = (lcdc and 0x20u) != 0u.toUByte()
+            val wy = memory.readByte(0xFF4Au).toInt()
+            val wx = memory.readByte(0xFF4Bu).toInt()
+            val windowScreenX = wx - 7  // WX=7 → screen x=0; WX=166 → screen x=159
+
+            if (windowEnabled && line >= wy && wx < 167) {
+                val usingWindowMap9C00 = (lcdc and 0x40u) != 0u.toUByte()
+                val windowTileMapBase = if (usingWindowMap9C00) 0x9C00 else 0x9800
+                val windowTileRow = windowLineCounter / 8
+
+                for (x in maxOf(0, windowScreenX) until 160) {
+                    val xInWindow = x - windowScreenX
+                    val tileId = memory.readByte((windowTileMapBase + windowTileRow * 32 + xInWindow / 8).toUShort())
+                    val tileNum = if (usingTileSet8000) tileId.toInt() and 0xFF else tileId.toByte().toInt() + 128
+                    val tileAddr = tileDataBase + tileNum * 16 + (windowLineCounter % 8) * 2
+                    val data1 = memory.readByte(tileAddr.toUShort())
+                    val data2 = memory.readByte((tileAddr + 1).toUShort())
+                    val bit = 7 - (xInWindow % 8)
+                    val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
+                    bgColorIds[x] = colorId
+                    _frameBuffer[line][x] = (bgp shr (colorId * 2)) and 0x03
+                }
+                windowLineCounter++
             }
         }
 
