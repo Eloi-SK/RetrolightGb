@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 fun GameBoyScreen(
     frameBuffer: Array<IntArray>,
     modifier: Modifier = Modifier,
+    palette: GameBoyPalette = GameBoyPalette.ClassicDMG,
 ) {
     val scale = 2
 
@@ -22,16 +23,8 @@ fun GameBoyScreen(
         val pixelH = size.height / 144f
         frameBuffer.forEachIndexed { y, row ->
             row.forEachIndexed { x, colorId ->
-                val color = when (colorId) {
-                    0 -> Color(color = 0xFFFFFFFF)
-                    1 -> Color(color = 0xFFAAAAAA)
-                    2 -> Color(color = 0xFF555555)
-                    3 -> Color(color = 0xFF000000)
-                    else -> Color.Green
-                }
-
                 drawRect(
-                    color = color,
+                    color = palette.colorFor(colorId),
                     topLeft = Offset(x = x * pixelW, y = y * pixelH),
                     size = Size(width = pixelW, height = pixelH)
                 )

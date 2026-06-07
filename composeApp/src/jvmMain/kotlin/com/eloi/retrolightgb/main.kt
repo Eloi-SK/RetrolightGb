@@ -21,6 +21,7 @@ import com.eloi.retrolightgb.core.memory.Memory
 import com.eloi.retrolightgb.di.LocalDI
 import com.eloi.retrolightgb.di.di
 import com.eloi.retrolightgb.di.rememberInstance
+import com.eloi.retrolightgb.ui.GameBoyPalette
 import com.eloi.retrolightgb.ui.SerialTerminal
 import java.io.BufferedWriter
 import java.io.FileWriter
@@ -39,6 +40,7 @@ fun main() = application {
 
         var openRom by remember { mutableStateOf<(() -> Unit)?>(null) }
         var showTerminal by remember { mutableStateOf(false) }
+        var palette by remember { mutableStateOf(GameBoyPalette.ClassicDMG) }
         val memory = rememberInstance<Memory>()
 
         Window(
@@ -77,9 +79,14 @@ fun main() = application {
                 }
                 Menu("View", mnemonic = 'V') {
                     Item("Terminal", mnemonic = 'T', onClick = { showTerminal = true })
+                    Menu("Paleta") {
+                        GameBoyPalette.entries.forEach { p ->
+                            CheckboxItem(p.label, checked = palette == p, onCheckedChange = { palette = p })
+                        }
+                    }
                 }
             }
-            GameBoy(onOpenRomReady = { openRom = it })
+            GameBoy(onOpenRomReady = { openRom = it }, palette = palette)
         }
 
         if (showTerminal) {

@@ -10,6 +10,7 @@ import com.eloi.retrolightgb.core.cpu.Cpu
 import com.eloi.retrolightgb.core.memory.Memory
 import com.eloi.retrolightgb.core.ppu.Ppu
 import com.eloi.retrolightgb.di.rememberInstance
+import com.eloi.retrolightgb.ui.GameBoyPalette
 import com.eloi.retrolightgb.ui.GameBoyScreen
 import com.eloi.retrolightgb.ui.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +21,10 @@ import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.TimeSource
 
 @Composable
-fun GameBoy(onOpenRomReady: (openRom: () -> Unit) -> Unit = {}) {
+fun GameBoy(
+    onOpenRomReady: (openRom: () -> Unit) -> Unit = {},
+    palette: GameBoyPalette = GameBoyPalette.ClassicDMG,
+) {
     val memory = rememberInstance<Memory>()
     val cpu = rememberInstance<Cpu>()
     val ppu = rememberInstance<Ppu>()
@@ -75,5 +79,5 @@ fun GameBoy(onOpenRomReady: (openRom: () -> Unit) -> Unit = {}) {
 
     SideEffect { onOpenRomReady(filePickerLauncher::launch) }
 
-    GameBoyScreen(frameBuffer = ppu.frameBuffer)
+    GameBoyScreen(frameBuffer = ppu.frameBuffer, palette = palette)
 }
