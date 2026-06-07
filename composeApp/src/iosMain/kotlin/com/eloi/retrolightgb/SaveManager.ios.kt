@@ -10,6 +10,7 @@ import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.dataWithBytes
 import platform.Foundation.dataWithContentsOfFile
+import platform.Foundation.writeToFile
 import platform.posix.memcpy
 
 @OptIn(ExperimentalForeignApi::class)

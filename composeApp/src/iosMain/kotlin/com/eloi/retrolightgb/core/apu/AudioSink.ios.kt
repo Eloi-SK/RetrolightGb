@@ -10,6 +10,7 @@ import platform.AVFAudio.AVAudioPCMFormatFloat32
 import platform.AVFAudio.AVAudioPlayerNode
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.AVAudioSessionCategoryPlayback
+import platform.AVFAudio.setActive
 
 // AVAudioEngine streams non-interleaved Float32 PCM to the hardware.
 // write() receives interleaved Int16 stereo from the APU; we de-interleave and
@@ -25,7 +26,7 @@ actual class AudioSink actual constructor() {
         sampleRate = 44100.0,
         channels = 2u,
         interleaved = false
-    )!!
+    )
 
     actual fun start() {
         // Activate audio session so playback works when the screen is locked / silent switch is on.
