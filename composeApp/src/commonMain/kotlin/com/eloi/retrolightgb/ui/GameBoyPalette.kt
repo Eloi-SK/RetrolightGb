@@ -1,6 +1,7 @@
 package com.eloi.retrolightgb.ui
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 
 // Each palette defines four colors mapped to PPU color IDs 0 (lightest) → 3 (darkest).
 enum class GameBoyPalette(val label: String, val c0: Color, val c1: Color, val c2: Color, val c3: Color) {
@@ -33,4 +34,6 @@ enum class GameBoyPalette(val label: String, val c0: Color, val c1: Color, val c
     fun colorFor(id: Int): Color = when (id) {
         0 -> c0; 1 -> c1; 2 -> c2; else -> c3
     }
+
+    val argb: IntArray = intArrayOf(c0.toArgb(), c1.toArgb(), c2.toArgb(), c3.toArgb())
 }

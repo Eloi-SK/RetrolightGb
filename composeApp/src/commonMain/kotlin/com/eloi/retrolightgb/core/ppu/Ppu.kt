@@ -7,13 +7,20 @@ import com.eloi.retrolightgb.core.cpu.InterruptType
 import com.eloi.retrolightgb.core.memory.Memory
 
 class Ppu(private val memory: Memory) {
-    private val _frameBuffer: Array<IntArray> = Array(144) { IntArray(160) }
+    // Two flat 160×144 buffers of PPU color IDs (0..3), swapped at VBlank.
+    // The PPU renders scanlines into `backBuffer`; on VBlank it publishes that
+    // buffer as `frameBuffer` (the front buffer the UI reads) and switches the
+    // back buffer to the previous front. This avoids allocating a fresh frame
+    // every VBlank — the reference still changes each frame, so Compose recomposes.
+    private val bufferA = IntArray(160 * 144)
+    private val bufferB = IntArray(160 * 144)
+    private var backBuffer = bufferA
     private var scanLineCycles: Int = 0
     private var currentLine: Int = 0
     private var mode: Int = 2
     private var windowLineCounter: Int = 0
 
-    var frameBuffer by mutableStateOf(_frameBuffer)
+    var frameBuffer by mutableStateOf(bufferB)
         private set
 
     fun reset() {
@@ -21,8 +28,10 @@ class Ppu(private val memory: Memory) {
         currentLine = 0
         mode = 2
         windowLineCounter = 0
-        for (row in _frameBuffer) row.fill(0)
-        frameBuffer = Array(144) { _frameBuffer[it].copyOf() }
+        bufferA.fill(0)
+        bufferB.fill(0)
+        backBuffer = bufferA
+        frameBuffer = bufferB
     }
 
     fun tick(cycles: Int) {
@@ -76,7 +85,9 @@ class Ppu(private val memory: Memory) {
                             mode = 1
                             setMode(mode)
                             memory.requestInterrupt(InterruptType.VBlank)
-                            frameBuffer = Array(144) { _frameBuffer[it].copyOf() }
+                            // Publish the rendered back buffer and swap to the other.
+                            frameBuffer = backBuffer
+                            backBuffer = if (backBuffer === bufferA) bufferB else bufferA
 
                             val statRegister = memory.readByte(0xFF41u)
                             if ((statRegister.toInt() and 0x10) != 0) {
@@ -134,6 +145,7 @@ class Ppu(private val memory: Memory) {
 
     private fun renderScanLine(line: Int) {
         val lcdc = memory.readByte(0xFF40u)
+        val rowOffset = line * 160
 
         // bgColorIds tracks raw BG color index (0-3) per pixel for sprite priority
         val bgColorIds = IntArray(160)
@@ -161,7 +173,7 @@ class Ppu(private val memory: Memory) {
                 val bit = 7 - (xInBg % 8)
                 val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
                 bgColorIds[x] = colorId
-                _frameBuffer[line][x] = (bgp shr (colorId * 2)) and 0x03
+                backBuffer[rowOffset + x] = (bgp shr (colorId * 2)) and 0x03
             }
 
             // Window layer — drawn over BG, below sprites.
@@ -186,7 +198,7 @@ class Ppu(private val memory: Memory) {
                     val bit = 7 - (xInWindow % 8)
                     val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
                     bgColorIds[x] = colorId
-                    _frameBuffer[line][x] = (bgp shr (colorId * 2)) and 0x03
+                    backBuffer[rowOffset + x] = (bgp shr (colorId * 2)) and 0x03
                 }
                 windowLineCounter++
             }
@@ -244,7 +256,7 @@ class Ppu(private val memory: Memory) {
                 val colorId = ((data2.toInt() shr bit) and 1 shl 1) or ((data1.toInt() shr bit) and 1)
                 if (colorId == 0) continue                          // color 0 = transparent
                 if (behindBg && bgColorIds[screenX] != 0) continue // behind non-zero BG pixels
-                _frameBuffer[line][screenX] = (obp shr (colorId * 2)) and 0x03
+                backBuffer[rowOffset + screenX] = (obp shr (colorId * 2)) and 0x03
             }
         }
     }
@@ -259,7 +271,6 @@ class Ppu(private val memory: Memory) {
 
             if ((statValue.toInt() and 0x40) != 0) {
                 memory.requestInterrupt(InterruptType.LcdStat)
-                println("PPU: LYC=LY Interrupt Requested (LY=${lyValue.toString(16)}, LYC=${lycValue.toString(16)})")
             }
         } else {
             statValue = (statValue.toInt() and 0xFB).toUByte()
