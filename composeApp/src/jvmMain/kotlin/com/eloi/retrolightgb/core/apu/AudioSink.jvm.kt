@@ -22,7 +22,7 @@ actual class AudioSink actual constructor() {
     }
 
     actual fun stop() {
-        line?.drain(); line?.stop(); line?.close(); line = null
+        line?.flush(); line?.stop(); line?.close(); line = null
     }
 
     actual fun write(samples: ShortArray) {
