@@ -50,7 +50,7 @@ A Game Boy emulator built with Kotlin Multiplatform and Compose Multiplatform, r
 ### Prerequisites
 
 - Android Studio (Iguana or newer) or IntelliJ IDEA with the Kotlin Multiplatform plugin
-- JDK 11+
+- JDK 21 (JDK 25+ is incompatible with Kotlin 2.2.0)
 - Xcode (iOS builds only)
 
 ### Clone
@@ -69,11 +69,11 @@ cd RetrolightGb
 # Desktop (JVM)
 ./gradlew run
 
-# Run tests
-./gradlew test
+# Run unit tests (JVM — fast, no device needed)
+./gradlew :composeApp:jvmTest
 
 # Run a single test class
-./gradlew :composeApp:testDebugUnitTest --tests "com.eloi.retrolightgb.ComposeAppCommonTest"
+./gradlew :composeApp:jvmTest --tests "com.eloi.retrolightgb.core.cpu.CpuInstructionTest"
 
 # Clean
 ./gradlew clean
