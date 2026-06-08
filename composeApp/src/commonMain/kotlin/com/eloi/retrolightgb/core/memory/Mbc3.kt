@@ -1,5 +1,10 @@
 package com.eloi.retrolightgb.core.memory
 
+import com.eloi.retrolightgb.core.readBoolean
+import com.eloi.retrolightgb.core.writeBoolean
+import okio.BufferedSink
+import okio.BufferedSource
+
 // MBC3: up to 2MB ROM (128 banks × 16KB), 32KB RAM (4 banks × 8KB), and Real Time Clock.
 //
 // RTC registers are selected via 0x4000–0x5FFF (values 0x08–0x0C).
@@ -82,6 +87,30 @@ class Mbc3(private val rom: UByteArray) : Cartridge {
             rtcDL = (wrapped and 0xFF).toInt()
             rtcDH = (rtcDH and 0x40) or 0x80 or ((wrapped shr 8).toInt() and 0x01)
         }
+    }
+
+    // Save-state captures the full live + latched RTC and the latch/cycle state,
+    // so the clock resumes exactly. (saveRam/loadRam above is the battery format
+    // that instead re-syncs against wall-clock time.)
+    override fun saveState(sink: BufferedSink) {
+        sink.write(ram.toByteArray())
+        sink.writeInt(romBank); sink.writeInt(ramBank)
+        sink.writeBoolean(ramEnabled)
+        sink.writeInt(rtcS); sink.writeInt(rtcM); sink.writeInt(rtcH); sink.writeInt(rtcDL); sink.writeInt(rtcDH)
+        sink.writeInt(latchS); sink.writeInt(latchM); sink.writeInt(latchH); sink.writeInt(latchDL); sink.writeInt(latchDH)
+        sink.writeBoolean(latchPrimed)
+        sink.writeInt(rtcCycles)
+    }
+
+    override fun loadState(source: BufferedSource) {
+        val bytes = source.readByteArray(ram.size.toLong())
+        for (i in bytes.indices) ram[i] = bytes[i].toUByte()
+        romBank = source.readInt(); ramBank = source.readInt()
+        ramEnabled = source.readBoolean()
+        rtcS = source.readInt(); rtcM = source.readInt(); rtcH = source.readInt(); rtcDL = source.readInt(); rtcDH = source.readInt()
+        latchS = source.readInt(); latchM = source.readInt(); latchH = source.readInt(); latchDL = source.readInt(); latchDH = source.readInt()
+        latchPrimed = source.readBoolean()
+        rtcCycles = source.readInt()
     }
 
     override fun tick(cycles: Int) {

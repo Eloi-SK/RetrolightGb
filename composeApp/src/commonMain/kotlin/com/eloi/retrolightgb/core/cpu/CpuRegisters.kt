@@ -1,5 +1,10 @@
 package com.eloi.retrolightgb.core.cpu
 
+import com.eloi.retrolightgb.core.readBoolean
+import com.eloi.retrolightgb.core.writeBoolean
+import okio.BufferedSink
+import okio.BufferedSource
+
 class CpuRegisters {
     var a: UByte = 0u
     var b: UByte = 0u
@@ -31,4 +36,20 @@ class CpuRegisters {
     fun setFlag(flag: UByte) { f = f or flag }
     fun unsetFlag(flag: UByte) { f = f and flag.inv() }
     fun isFlagSet(flag: UByte): Boolean = (f and flag) != 0u.toUByte()
+
+    fun saveState(sink: BufferedSink) {
+        sink.writeByte(a.toInt()); sink.writeByte(b.toInt()); sink.writeByte(c.toInt()); sink.writeByte(d.toInt())
+        sink.writeByte(e.toInt()); sink.writeByte(f.toInt()); sink.writeByte(h.toInt()); sink.writeByte(l.toInt())
+        sink.writeShort(pc.toInt()); sink.writeShort(sp.toInt())
+        sink.writeInt(t); sink.writeInt(m); sink.writeInt(lastT); sink.writeInt(lastM)
+        sink.writeBoolean(imeEnabled); sink.writeBoolean(pendingIme); sink.writeBoolean(halted)
+    }
+
+    fun loadState(source: BufferedSource) {
+        a = source.readByte().toUByte(); b = source.readByte().toUByte(); c = source.readByte().toUByte(); d = source.readByte().toUByte()
+        e = source.readByte().toUByte(); f = source.readByte().toUByte(); h = source.readByte().toUByte(); l = source.readByte().toUByte()
+        pc = source.readShort().toUShort(); sp = source.readShort().toUShort()
+        t = source.readInt(); m = source.readInt(); lastT = source.readInt(); lastM = source.readInt()
+        imeEnabled = source.readBoolean(); pendingIme = source.readBoolean(); halted = source.readBoolean()
+    }
 }

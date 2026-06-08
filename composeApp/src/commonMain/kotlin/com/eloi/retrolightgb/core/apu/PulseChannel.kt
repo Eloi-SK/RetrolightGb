@@ -1,5 +1,10 @@
 package com.eloi.retrolightgb.core.apu
 
+import com.eloi.retrolightgb.core.readBoolean
+import com.eloi.retrolightgb.core.writeBoolean
+import okio.BufferedSink
+import okio.BufferedSource
+
 // Channels 1 (with sweep) and 2 (no sweep).
 class PulseChannel(private val hasSweep: Boolean) {
     private var dacEnabled = false
@@ -113,6 +118,28 @@ class PulseChannel(private val hasSweep: Boolean) {
         dutyPattern = 2; dutyStep = 0
         sweepPeriod = 0; sweepNegate = false; sweepShift = 0
         sweepTimer = 0; sweepEnabled = false; shadowFrequency = 0
+    }
+
+    fun saveState(sink: BufferedSink) {
+        sink.writeBoolean(dacEnabled); sink.writeBoolean(channelEnabled)
+        sink.writeInt(lengthCounter); sink.writeBoolean(lengthEnable)
+        sink.writeInt(initialVolume); sink.writeBoolean(addMode)
+        sink.writeInt(envelopePeriod); sink.writeInt(envelopeTimer); sink.writeInt(currentVolume)
+        sink.writeInt(frequencyLow); sink.writeInt(frequencyHigh); sink.writeInt(frequencyTimer)
+        sink.writeInt(dutyPattern); sink.writeInt(dutyStep)
+        sink.writeInt(sweepPeriod); sink.writeBoolean(sweepNegate); sink.writeInt(sweepShift)
+        sink.writeInt(sweepTimer); sink.writeBoolean(sweepEnabled); sink.writeInt(shadowFrequency)
+    }
+
+    fun loadState(source: BufferedSource) {
+        dacEnabled = source.readBoolean(); channelEnabled = source.readBoolean()
+        lengthCounter = source.readInt(); lengthEnable = source.readBoolean()
+        initialVolume = source.readInt(); addMode = source.readBoolean()
+        envelopePeriod = source.readInt(); envelopeTimer = source.readInt(); currentVolume = source.readInt()
+        frequencyLow = source.readInt(); frequencyHigh = source.readInt(); frequencyTimer = source.readInt()
+        dutyPattern = source.readInt(); dutyStep = source.readInt()
+        sweepPeriod = source.readInt(); sweepNegate = source.readBoolean(); sweepShift = source.readInt()
+        sweepTimer = source.readInt(); sweepEnabled = source.readBoolean(); shadowFrequency = source.readInt()
     }
 
     fun writeLengthOnly(len: Int) { lengthCounter = 64 - (len and 0x3F) }

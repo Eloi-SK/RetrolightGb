@@ -6,6 +6,10 @@ import androidx.compose.runtime.setValue
 import com.eloi.retrolightgb.SaveManager
 import com.eloi.retrolightgb.core.apu.Apu
 import com.eloi.retrolightgb.core.cpu.InterruptType
+import com.eloi.retrolightgb.core.readBoolean
+import com.eloi.retrolightgb.core.writeBoolean
+import okio.BufferedSink
+import okio.BufferedSource
 
 @OptIn(ExperimentalUnsignedTypes::class)
 class Memory(private val apu: Apu? = null) {
@@ -50,6 +54,35 @@ class Memory(private val apu: Apu? = null) {
         val name = saveName ?: return
         val data = cartridge?.saveRam() ?: return
         SaveManager.save(name, data)
+    }
+
+    // Internal ROM title of the currently loaded cartridge, or null if none.
+    val currentTitle: String? get() = saveName
+
+    // Snapshot of all mutable memory state (excluding the immutable ROM and the
+    // boot ROM). The current input (pressedButtons) and serial log are transient
+    // and intentionally not captured.
+    fun saveState(sink: BufferedSink) {
+        sink.write(ram.toByteArray())
+        sink.writeBoolean(isBootRomEnabled)
+        sink.writeByte(ifRegister.toInt())
+        sink.writeByte(ieRegister.toInt())
+        sink.writeInt(divCounter)
+        sink.writeInt(timerAccumulator)
+        sink.writeByte(joypadSelection.toInt())
+        cartridge?.saveState(sink)
+    }
+
+    fun loadState(source: BufferedSource) {
+        val bytes = source.readByteArray(RAM_SIZE.toLong())
+        for (i in bytes.indices) ram[i] = bytes[i].toUByte()
+        isBootRomEnabled = source.readBoolean()
+        ifRegister = source.readByte().toUByte()
+        ieRegister = source.readByte().toUByte()
+        divCounter = source.readInt()
+        timerAccumulator = source.readInt()
+        joypadSelection = source.readByte().toUByte()
+        cartridge?.loadState(source)
     }
 
     private fun extractRomTitle(rom: UByteArray): String =

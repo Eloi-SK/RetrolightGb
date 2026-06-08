@@ -1,5 +1,10 @@
 package com.eloi.retrolightgb.core.apu
 
+import com.eloi.retrolightgb.core.readBoolean
+import com.eloi.retrolightgb.core.writeBoolean
+import okio.BufferedSink
+import okio.BufferedSource
+
 // Game Boy APU — all 4 channels + frame sequencer + stereo mixing.
 @OptIn(ExperimentalUnsignedTypes::class)
 class Apu {
@@ -39,6 +44,24 @@ class Apu {
         masterEnabled = false; nr50 = 0x77; nr51 = 0xF3
         waveRam.fill(0u)
         ch1.reset(); ch2.reset(); ch3.reset(); ch4.reset()
+    }
+
+    // Save-state. The partially filled output buffer is transient audio, so it is
+    // dropped (bufferPos resets to 0) instead of being persisted.
+    fun saveState(sink: BufferedSink) {
+        sink.writeInt(sampleAccum); sink.writeInt(fsCycles); sink.writeInt(fsStep)
+        sink.writeBoolean(masterEnabled); sink.writeInt(nr50); sink.writeInt(nr51)
+        sink.write(waveRam.toByteArray())
+        ch1.saveState(sink); ch2.saveState(sink); ch3.saveState(sink); ch4.saveState(sink)
+    }
+
+    fun loadState(source: BufferedSource) {
+        sampleAccum = source.readInt(); fsCycles = source.readInt(); fsStep = source.readInt()
+        masterEnabled = source.readBoolean(); nr50 = source.readInt(); nr51 = source.readInt()
+        val bytes = source.readByteArray(waveRam.size.toLong())
+        for (i in bytes.indices) waveRam[i] = bytes[i].toUByte()
+        ch1.loadState(source); ch2.loadState(source); ch3.loadState(source); ch4.loadState(source)
+        bufferPos = 0
     }
 
     fun tick(cycles: Int) {

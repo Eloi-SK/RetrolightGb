@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.eloi.retrolightgb.core.cpu.InterruptType
 import com.eloi.retrolightgb.core.memory.Memory
+import okio.BufferedSink
+import okio.BufferedSource
 
 class Ppu(private val memory: Memory) {
     // Two flat 160×144 buffers of PPU color IDs (0..3), swapped at VBlank.
@@ -32,6 +34,22 @@ class Ppu(private val memory: Memory) {
         bufferB.fill(0)
         backBuffer = bufferA
         frameBuffer = bufferB
+    }
+
+    // Save-state: the scanline state machine plus the currently displayed frame,
+    // so the screen shows the restored image immediately (next render repaints it).
+    fun saveState(sink: BufferedSink) {
+        sink.writeInt(scanLineCycles); sink.writeInt(currentLine); sink.writeInt(mode); sink.writeInt(windowLineCounter)
+        val front = frameBuffer
+        for (pixel in front) sink.writeInt(pixel)
+    }
+
+    fun loadState(source: BufferedSource) {
+        scanLineCycles = source.readInt(); currentLine = source.readInt(); mode = source.readInt(); windowLineCounter = source.readInt()
+        for (i in backBuffer.indices) backBuffer[i] = source.readInt()
+        // Publish the restored pixels as the visible front buffer (mirrors VBlank).
+        frameBuffer = backBuffer
+        backBuffer = if (backBuffer === bufferA) bufferB else bufferA
     }
 
     fun tick(cycles: Int) {

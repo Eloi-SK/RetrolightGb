@@ -25,6 +25,8 @@ import kotlin.time.TimeSource
 @Composable
 fun GameBoy(
     onOpenRomReady: (openRom: () -> Unit) -> Unit = {},
+    onSaveStateReady: (saveState: (Int) -> Unit) -> Unit = {},
+    onLoadStateReady: (loadState: (Int) -> Unit) -> Unit = {},
     palette: GameBoyPalette = GameBoyPalette.ClassicDMG,
 ) {
     val memory = rememberInstance<Memory>()
@@ -34,12 +36,55 @@ fun GameBoy(
     val scope = rememberCoroutineScope()
     val emulationJob = remember { mutableListOf<Job>() }
 
+    fun startEmulationLoop() {
+        emulationJob += scope.launch(Dispatchers.Default) {
+            val cyclesPerFrame = 70_224           // 456 cycles/line × 154 lines
+            val frameDuration = 16_742_706.nanoseconds  // 1s / 59.7275 FPS
+            var cycleBudget = 0
+            var nextDeadline = TimeSource.Monotonic.markNow() + frameDuration
+
+            try {
+                while (true) {
+                    cpu.step()
+                    val cycles = cpu.t - cpu.lastT
+                    ppu.tick(cycles)
+                    memory.tickTimer(cycles)
+                    apu.tick(cycles)
+                    cycleBudget += cycles
+
+                    if (cycleBudget >= cyclesPerFrame) {
+                        cycleBudget -= cyclesPerFrame
+
+                        ensureActive()
+                        // timeLeft is positive when deadline is still in the future
+                        val timeLeft = -nextDeadline.elapsedNow()
+                        if (timeLeft.isPositive()) {
+                            val sleepMs = timeLeft.inWholeMilliseconds - 1
+                            if (sleepMs > 0) delay(sleepMs)
+                        }
+                        // advance by fixed duration — delay overshoot is absorbed next frame
+                        nextDeadline += frameDuration
+                    }
+                }
+            } catch (e: NotImplementedError) {
+                println("CPU CRASH: ${e.message}")
+                println(cpu.dumpTrace())
+            }
+        }
+    }
+
+    // Stop the emulation loop and wait for it to fully unwind before mutating shared
+    // state. The loop only suspends at frame boundaries, so this lands on a clean,
+    // consistent machine state — safe to snapshot, restore, or reset.
+    suspend fun stopEmulationLoop() {
+        emulationJob.firstOrNull()?.cancelAndJoin()
+        emulationJob.clear()
+    }
+
     val filePickerLauncher = rememberFilePickerLauncher { bytes ->
         scope.launch(Dispatchers.Default) {
             apu.stop()
-
-            emulationJob.firstOrNull()?.cancelAndJoin()
-            emulationJob.clear()
+            stopEmulationLoop()
 
             cpu.reset()
             ppu.reset()
@@ -47,46 +92,39 @@ fun GameBoy(
             apu.reset()
             apu.start()
 
-            emulationJob += launch {
-                val cyclesPerFrame = 70_224           // 456 cycles/line × 154 lines
-                val frameDuration = 16_742_706.nanoseconds  // 1s / 59.7275 FPS
-                var cycleBudget = 0
-                var nextDeadline = TimeSource.Monotonic.markNow() + frameDuration
+            startEmulationLoop()
+        }
+    }
 
-                try {
-                    while (true) {
-                        cpu.step()
-                        val cycles = cpu.t - cpu.lastT
-                        ppu.tick(cycles)
-                        memory.tickTimer(cycles)
-                        apu.tick(cycles)
-                        cycleBudget += cycles
+    fun saveState(slot: Int) {
+        scope.launch(Dispatchers.Default) {
+            val title = memory.currentTitle ?: return@launch  // no ROM loaded
+            stopEmulationLoop()
+            val blob = SaveState.capture(title, cpu, ppu, memory, apu)
+            SaveManager.save(SaveState.slotKey(title, slot), blob)
+            startEmulationLoop()
+        }
+    }
 
-                        if (cycleBudget >= cyclesPerFrame) {
-                            cycleBudget -= cyclesPerFrame
-
-                            ensureActive()
-                            // timeLeft is positive when deadline is still in the future
-                            val timeLeft = -nextDeadline.elapsedNow()
-                            if (timeLeft.isPositive()) {
-                                val sleepMs = timeLeft.inWholeMilliseconds - 1
-                                if (sleepMs > 0) delay(sleepMs)
-                            }
-                            // advance by fixed duration — delay overshoot is absorbed next frame
-                            nextDeadline += frameDuration
-                        }
-                    }
-                } catch (e: NotImplementedError) {
-                    println("CPU CRASH: ${e.message}")
-                    println(cpu.dumpTrace())
-                }
-            }
+    fun loadState(slot: Int) {
+        scope.launch(Dispatchers.Default) {
+            val title = memory.currentTitle ?: return@launch  // no ROM loaded
+            val blob = SaveManager.load(SaveState.slotKey(title, slot)) ?: return@launch  // no save in slot
+            apu.stop()
+            stopEmulationLoop()
+            SaveState.restore(blob, title, cpu, ppu, memory, apu)
+            apu.start()
+            startEmulationLoop()
         }
     }
 
     DisposableEffect(Unit) { onDispose { memory.save() } }
 
-    SideEffect { onOpenRomReady(filePickerLauncher::launch) }
+    SideEffect {
+        onOpenRomReady(filePickerLauncher::launch)
+        onSaveStateReady(::saveState)
+        onLoadStateReady(::loadState)
+    }
 
     GameBoyScreen(frameBuffer = ppu.frameBuffer, palette = palette)
 }

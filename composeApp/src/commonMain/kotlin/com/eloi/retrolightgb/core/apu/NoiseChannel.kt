@@ -1,5 +1,10 @@
 package com.eloi.retrolightgb.core.apu
 
+import com.eloi.retrolightgb.core.readBoolean
+import com.eloi.retrolightgb.core.writeBoolean
+import okio.BufferedSink
+import okio.BufferedSource
+
 // Channel 4 — LFSR-based pseudo-random noise.
 class NoiseChannel {
     private var dacEnabled = false
@@ -69,6 +74,24 @@ class NoiseChannel {
         lengthCounter = 64; lengthEnable = false
         initialVolume = 0; addMode = false; envelopePeriod = 0; envelopeTimer = 0; currentVolume = 0
         clockShift = 0; lfsrWidth = false; divisorCode = 0; lfsr = 0x7FFF; frequencyTimer = 0
+    }
+
+    fun saveState(sink: BufferedSink) {
+        sink.writeBoolean(dacEnabled); sink.writeBoolean(channelEnabled)
+        sink.writeInt(lengthCounter); sink.writeBoolean(lengthEnable)
+        sink.writeInt(initialVolume); sink.writeBoolean(addMode)
+        sink.writeInt(envelopePeriod); sink.writeInt(envelopeTimer); sink.writeInt(currentVolume)
+        sink.writeInt(clockShift); sink.writeBoolean(lfsrWidth); sink.writeInt(divisorCode)
+        sink.writeInt(lfsr); sink.writeInt(frequencyTimer)
+    }
+
+    fun loadState(source: BufferedSource) {
+        dacEnabled = source.readBoolean(); channelEnabled = source.readBoolean()
+        lengthCounter = source.readInt(); lengthEnable = source.readBoolean()
+        initialVolume = source.readInt(); addMode = source.readBoolean()
+        envelopePeriod = source.readInt(); envelopeTimer = source.readInt(); currentVolume = source.readInt()
+        clockShift = source.readInt(); lfsrWidth = source.readBoolean(); divisorCode = source.readInt()
+        lfsr = source.readInt(); frequencyTimer = source.readInt()
     }
 
     fun writeLengthOnly(len: Int) { lengthCounter = 64 - (len and 0x3F) }

@@ -54,6 +54,10 @@ Four singletons wired together via Kodein DI (`Apu` → `Memory` → `Cpu` / `Pp
 
 `expect object SaveManager { load(name); save(name, data) }`. Battery-backed RAM is keyed by the ROM's internal title (extracted from 0x0134–0x0143). Saved on ROM switch, on `Memory.save()`, and on window/activity teardown. `CurrentTime` is an `expect` providing the wall-clock used by MBC3 RTC.
 
+### Save States (`SaveState.kt`)
+
+A **full-machine snapshot** — distinct from battery SRAM. Each stateful component (`CpuRegisters`, `Memory` + each MBC via `Cartridge.saveState`/`loadState`, `Ppu`, `Apu` + its four channels) serializes its mutable fields through Okio `BufferedSink`/`BufferedSource`. `SaveState.capture`/`restore` frame the blob with a magic header, version, and the ROM title (a state only restores onto the same game). The immutable ROM is **not** stored. Persisted via `SaveManager` under key `"$title.ss$slot"`. Save/load run on the emulation dispatcher and `cancelAndJoin` the loop first, so the snapshot is taken/applied on a consistent (frame-boundary) machine state. Desktop UI: File ▸ Save/Load State and **F5**/**F8** (quick slot 0). Round-trip tests in `commonTest/SaveStateTest.kt`.
+
 ### Emulation Loop (`GameBoy.kt`)
 
 ```

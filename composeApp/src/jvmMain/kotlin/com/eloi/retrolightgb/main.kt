@@ -39,6 +39,8 @@ fun main() = application {
         } else null
 
         var openRom by remember { mutableStateOf<(() -> Unit)?>(null) }
+        var saveState by remember { mutableStateOf<((Int) -> Unit)?>(null) }
+        var loadState by remember { mutableStateOf<((Int) -> Unit)?>(null) }
         var showTerminal by remember { mutableStateOf(false) }
         var palette by remember { mutableStateOf(GameBoyPalette.ClassicDMG) }
         val memory = rememberInstance<Memory>()
@@ -54,6 +56,14 @@ fun main() = application {
             title = "RetrolightGb",
             state = rememberWindowState(width = (160 * 2).dp, height = (144 * 2).dp),
             onKeyEvent = { event ->
+                // Save-state hotkeys (quick slot 0): F5 = save, F8 = load.
+                if (event.type == KeyEventType.KeyDown) {
+                    when (event.key) {
+                        Key.F5 -> { saveState?.invoke(0); return@Window true }
+                        Key.F8 -> { loadState?.invoke(0); return@Window true }
+                        else   -> {}
+                    }
+                }
                 val button = when (event.key) {
                     Key.DirectionRight -> JoypadButton.Right
                     Key.DirectionLeft  -> JoypadButton.Left
@@ -75,6 +85,8 @@ fun main() = application {
             MenuBar {
                 Menu("File", mnemonic = 'F') {
                     Item("Open", mnemonic = 'O', onClick = { openRom?.invoke() })
+                    Item("Save State", mnemonic = 'S', onClick = { saveState?.invoke(0) })
+                    Item("Load State", mnemonic = 'L', onClick = { loadState?.invoke(0) })
                     Item("Exit", onClick = ::exitApplication)
                 }
                 Menu("View", mnemonic = 'V') {
@@ -86,7 +98,12 @@ fun main() = application {
                     }
                 }
             }
-            GameBoy(onOpenRomReady = { openRom = it }, palette = palette)
+            GameBoy(
+                onOpenRomReady = { openRom = it },
+                onSaveStateReady = { saveState = it },
+                onLoadStateReady = { loadState = it },
+                palette = palette,
+            )
         }
 
         if (showTerminal) {

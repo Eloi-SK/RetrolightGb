@@ -2,6 +2,8 @@ package com.eloi.retrolightgb.core.cpu
 
 import com.eloi.retrolightgb.core.cpu.ops.*
 import com.eloi.retrolightgb.core.memory.Memory
+import okio.BufferedSink
+import okio.BufferedSource
 import kotlin.reflect.KMutableProperty0
 
 class Cpu(val memory: Memory, val isDebug: Boolean = false) {
@@ -34,7 +36,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
     val bc: UShort get() = registers.bc
     val de: UShort get() = registers.de
 
-    private val cbInstructions: Map<UInt, () -> Unit> = mapOf(
+    private val cbInstructions: Array<(() -> Unit)?> = opcodeTable(
         0x00u to { b = rlcRegister(b) },
         0x01u to { c = rlcRegister(c) },
         0x02u to { d = rlcRegister(d) },
@@ -293,7 +295,7 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xFFu to { a = setBitRegister(7, a) },
     )
 
-    private val instructions: Map<UInt, () -> Unit> = mapOf(
+    private val instructions: Array<(() -> Unit)?> = opcodeTable(
         0x00u to { nop() },
         0x01u to { loadPairRegisterN16().destructureAssign(::b, ::c) },
         0x02u to { loadRegisterToAddressPair(bc) },
@@ -540,22 +542,30 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         0xFFu to { rst(0x0038u) },
     )
 
+    // Materialize the opcode→handler pairs into a flat 256-slot array so dispatch
+    // is a direct array index (no HashMap lookup or UInt boxing) on the hottest path.
+    private fun opcodeTable(vararg entries: Pair<UInt, () -> Unit>): Array<(() -> Unit)?> {
+        val table = arrayOfNulls<(() -> Unit)?>(256)
+        for ((opcode, handler) in entries) table[opcode.toInt()] = handler
+        return table
+    }
+
     fun step() {
         lastT = t
         lastM = m
         if (pendingIme) { imeEnabled = true; pendingIme = false }
         if (halted) { t += 4; m++; handleInterrupts(); return }
         if (isDebug) tracer.step()
-        val opcode = memory.readByte(pc)
-        if (opcode == 0xCBu.toUByte()) {
-            val cbOpcode = memory.readByte((pc + 1u).toUShort())
-            cbInstructions[cbOpcode.toUInt()]?.invoke()
-                ?: throw NotImplementedError("CB prefix opcode 0x${cbOpcode.toHexString().uppercase()} " +
+        val opcode = memory.readByte(pc).toInt()
+        if (opcode == 0xCB) {
+            val cbOpcode = memory.readByte((pc + 1u).toUShort()).toInt()
+            cbInstructions[cbOpcode]?.invoke()
+                ?: throw NotImplementedError("CB prefix opcode 0x${cbOpcode.toString(16).uppercase()} " +
                         "not implemented in PC 0x${pc.toHexString()}")
         } else {
-            instructions[opcode.toUInt()]?.invoke()
+            instructions[opcode]?.invoke()
                 ?: throw NotImplementedError(
-                    "Opcode 0x${opcode.toHexString().uppercase()} not implemented in PC 0x${pc.toHexString()}"
+                    "Opcode 0x${opcode.toString(16).uppercase()} not implemented in PC 0x${pc.toHexString()}"
                 )
         }
         handleInterrupts()
@@ -602,6 +612,9 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
         registers.imeEnabled = false; registers.pendingIme = false; registers.halted = false
         tracer.clear()
     }
+
+    fun saveState(sink: BufferedSink) = registers.saveState(sink)
+    fun loadState(source: BufferedSource) { registers.loadState(source); tracer.clear() }
 
     private fun <A, B> Pair<A, B>.destructureAssign(a: KMutableProperty0<A>, b: KMutableProperty0<B>) {
         a.set(this.first)

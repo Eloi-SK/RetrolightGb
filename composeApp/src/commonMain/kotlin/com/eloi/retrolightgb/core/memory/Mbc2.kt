@@ -1,5 +1,10 @@
 package com.eloi.retrolightgb.core.memory
 
+import com.eloi.retrolightgb.core.readBoolean
+import com.eloi.retrolightgb.core.writeBoolean
+import okio.BufferedSink
+import okio.BufferedSource
+
 // MBC2: up to 256 KB ROM (16 banks × 16 KB) and 512 × 4-bit built-in RAM (no external RAM).
 //
 // Quirk: writes to 0x0000–0x3FFF use bit 8 of the address to pick the register:
@@ -18,6 +23,19 @@ class Mbc2(private val rom: UByteArray) : Cartridge {
     override fun loadRam(data: ByteArray) {
         val len = minOf(data.size, ram.size)
         for (i in 0 until len) ram[i] = data[i].toUByte()
+    }
+
+    override fun saveState(sink: BufferedSink) {
+        sink.write(ram.toByteArray())
+        sink.writeInt(romBank)
+        sink.writeBoolean(ramEnabled)
+    }
+
+    override fun loadState(source: BufferedSource) {
+        val bytes = source.readByteArray(ram.size.toLong())
+        for (i in bytes.indices) ram[i] = bytes[i].toUByte()
+        romBank = source.readInt()
+        ramEnabled = source.readBoolean()
     }
 
     override fun readByte(address: Int): UByte = when (address) {

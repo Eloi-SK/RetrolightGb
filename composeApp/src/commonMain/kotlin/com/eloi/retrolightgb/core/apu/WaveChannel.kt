@@ -1,5 +1,10 @@
 package com.eloi.retrolightgb.core.apu
 
+import com.eloi.retrolightgb.core.readBoolean
+import com.eloi.retrolightgb.core.writeBoolean
+import okio.BufferedSink
+import okio.BufferedSource
+
 // Channel 3 — PCM wave from 32 4-bit samples in Wave RAM (0xFF30-0xFF3F).
 @OptIn(ExperimentalUnsignedTypes::class)
 class WaveChannel(private val waveRam: UByteArray) {
@@ -53,6 +58,18 @@ class WaveChannel(private val waveRam: UByteArray) {
         dacEnabled = false; channelEnabled = false
         lengthCounter = 256; lengthEnable = false; outputLevel = 0
         frequencyLow = 0; frequencyHigh = 0; frequencyTimer = 0; wavePosition = 0
+    }
+
+    fun saveState(sink: BufferedSink) {
+        sink.writeBoolean(dacEnabled); sink.writeBoolean(channelEnabled)
+        sink.writeInt(lengthCounter); sink.writeBoolean(lengthEnable); sink.writeInt(outputLevel)
+        sink.writeInt(frequencyLow); sink.writeInt(frequencyHigh); sink.writeInt(frequencyTimer); sink.writeInt(wavePosition)
+    }
+
+    fun loadState(source: BufferedSource) {
+        dacEnabled = source.readBoolean(); channelEnabled = source.readBoolean()
+        lengthCounter = source.readInt(); lengthEnable = source.readBoolean(); outputLevel = source.readInt()
+        frequencyLow = source.readInt(); frequencyHigh = source.readInt(); frequencyTimer = source.readInt(); wavePosition = source.readInt()
     }
 
     fun writeLengthOnly(len: Int) { lengthCounter = 256 - (len and 0xFF) }
