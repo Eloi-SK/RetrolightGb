@@ -27,7 +27,7 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew :composeApp:assembleRelease -PappVersion=${{ github.ref_name }} --no-daemon
+        run: ./gradlew :composeApp:assembleRelease "-PappVersion=${{ github.ref_name }}" --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
@@ -47,7 +47,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build MSI
-        run: ./gradlew :composeApp:packageMsi -PappVersion=${{ github.ref_name }} --no-daemon
+        run: ./gradlew :composeApp:packageMsi "-PappVersion=${{ github.ref_name }}" --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
@@ -67,7 +67,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build Deb
-        run: ./gradlew :composeApp:packageDeb -PappVersion=${{ github.ref_name }} --no-daemon
+        run: ./gradlew :composeApp:packageDeb "-PappVersion=${{ github.ref_name }}" --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
@@ -87,7 +87,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build DMG
-        run: ./gradlew :composeApp:packageDmg -PappVersion=${{ github.ref_name }} --no-daemon
+        run: ./gradlew :composeApp:packageDmg "-PappVersion=${{ github.ref_name }}" --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
