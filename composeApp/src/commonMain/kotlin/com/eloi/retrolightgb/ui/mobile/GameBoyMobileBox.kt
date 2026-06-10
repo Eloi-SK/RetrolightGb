@@ -1,9 +1,12 @@
 package com.eloi.retrolightgb.ui.mobile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -15,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -25,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.eloi.retrolightgb.GameBoy
 import com.eloi.retrolightgb.core.memory.JoypadButton
 import com.eloi.retrolightgb.core.memory.Memory
@@ -32,6 +37,9 @@ import com.eloi.retrolightgb.di.LocalDI
 import com.eloi.retrolightgb.di.di
 import com.eloi.retrolightgb.di.rememberInstance
 import org.jetbrains.compose.ui.tooling.preview.Preview
+
+private val BodyColor = Color(0xFFBEBEBE)
+private val BezelColor = Color(0xFF1A1A1A)
 
 @Composable
 fun GameBoyMobileBox() {
@@ -69,6 +77,7 @@ fun GameBoyMobileBoxContent(
 ) {
     MaterialTheme {
         Scaffold(
+            containerColor = BodyColor,
             floatingActionButton = {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -87,10 +96,40 @@ fun GameBoyMobileBoxContent(
             },
         ) { paddingValues ->
             Column(
-                modifier = Modifier.padding(paddingValues),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                screen()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(BezelColor),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(
+                            top = 20.dp, start = 20.dp, end = 20.dp, bottom = 16.dp,
+                        ),
+                    ) {
+                        Text(
+                            text = "RETRO LIGHT GB",
+                            color = Color(0xFF666688),
+                            fontSize = 7.sp,
+                            letterSpacing = 2.sp,
+                        )
+                        Box(
+                            modifier = Modifier
+                                .border(4.dp, Color(0xFF080808))
+                                .background(Color.Black),
+                        ) {
+                            screen()
+                        }
+                    }
+                }
+
                 MobileJoypad(
                     onButtonPressed = onButtonPressed,
                     onButtonReleased = onButtonReleased,
@@ -113,7 +152,7 @@ private fun GameBoyMobileBoxPreview() {
             Box(
                 modifier = Modifier
                     .size(320.dp, 288.dp)
-                    .background(Color.Black)
+                    .background(Color.Black),
             )
         },
     )
