@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+
+  <!-- Background -->
+  <rect width="108" height="108" fill="#1A1A2E"/>
+
+  <!-- Body — Game Boy DMG shape with top-left chamfer -->
+  <path fill="#C8C8C0" d="M36,18 L84,18 Q86,18 86,20 L86,88 Q86,90 84,90 L24,90 Q22,90 22,88 L22,34 Z"/>
+
+  <!-- Chamfer highlight edge -->
+  <path fill="none" stroke="#D8D8D0" stroke-width="1.5" d="M36,18 L22,34"/>
+
+  <!-- Screen bezel -->
+  <rect fill="#1C1C1C" x="28" y="21" width="52" height="32"/>
+
+  <!-- Screen -->
+  <rect fill="#0A150A" x="31" y="24" width="46" height="26"/>
+
+  <!-- Screen pixel dots -->
+  <rect fill="#2A5A2A" x="38" y="28" width="4" height="4"/>
+  <rect fill="#2A5A2A" x="55" y="31" width="4" height="4"/>
+  <rect fill="#2A5A2A" x="66" y="27" width="4" height="4"/>
+  <rect fill="#2A5A2A" x="45" y="39" width="4" height="4"/>
+  <rect fill="#2A5A2A" x="72" y="40" width="4" height="4"/>
+  <rect fill="#3A7A3A" x="48" y="33" width="4" height="4"/>
+  <rect fill="#3A7A3A" x="62" y="44" width="4" height="4"/>
+  <rect fill="#3A7A3A" x="35" y="43" width="4" height="4"/>
+
+  <!-- D-pad horizontal bar -->
+  <rect fill="#282828" x="27" y="64" width="23" height="9" rx="2"/>
+
+  <!-- D-pad vertical bar -->
+  <rect fill="#282828" x="34" y="59" width="9" height="19" rx="2"/>
+
+  <!-- D-pad center bump -->
+  <circle fill="#3C3C3C" cx="38" cy="68" r="3"/>
+
+  <!-- B button -->
+  <circle fill="#8B2252" cx="63" cy="72" r="6"/>
+
+  <!-- A button -->
+  <circle fill="#8B2252" cx="74" cy="62" r="6"/>
+
+  <!-- Select button -->
+  <rect fill="#555555" x="37" y="79" width="12" height="6" rx="3"/>
+
+  <!-- Start button -->
+  <rect fill="#555555" x="51" y="79" width="12" height="6" rx="3"/>
+
+  <!-- Power LED -->
+  <circle fill="#44DD44" cx="29" cy="87" r="2"/>
+
+  <!-- Speaker grille -->
+  <circle fill="#888888" cx="67" cy="82" r="1.5"/>
+  <circle fill="#888888" cx="72" cy="82" r="1.5"/>
+  <circle fill="#888888" cx="77" cy="82" r="1.5"/>
+  <circle fill="#888888" cx="67" cy="87" r="1.5"/>
+  <circle fill="#888888" cx="72" cy="87" r="1.5"/>
+  <circle fill="#888888" cx="77" cy="87" r="1.5"/>
+
+</svg>
