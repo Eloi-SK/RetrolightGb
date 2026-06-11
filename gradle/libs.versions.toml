@@ -16,6 +16,7 @@ kodein = "7.25.0"
 kotlin = "2.2.0"
 kotlinx-coroutines = "1.10.2"
 okio = "3.16.0"
+voyager = "1.1.0-beta03"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -31,6 +32,7 @@ androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 kodein = { module = "org.kodein.di:kodein-di", version.ref = "kodein" }
+voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyager" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

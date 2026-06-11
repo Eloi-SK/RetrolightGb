@@ -11,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -22,6 +21,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,12 +40,11 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.eloi.retrolightgb.GameBoy
+import cafe.adriel.voyager.navigator.Navigator
 import com.eloi.retrolightgb.core.memory.JoypadButton
-import com.eloi.retrolightgb.core.memory.Memory
 import com.eloi.retrolightgb.di.LocalDI
 import com.eloi.retrolightgb.di.di
-import com.eloi.retrolightgb.di.rememberInstance
+import com.eloi.retrolightgb.ui.screens.GameScreen
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 private val BodyColor = Color(0xFFBEBEBE)
@@ -54,25 +53,7 @@ private val BezelColor = Color(0xFF1A1A1A)
 @Composable
 fun GameBoyMobileBox() {
     CompositionLocalProvider(LocalDI provides di) {
-        val memory = rememberInstance<Memory>()
-        var openRom by remember { mutableStateOf<(() -> Unit)?>(null) }
-        var saveState by remember { mutableStateOf<((Int) -> Unit)?>(null) }
-        var loadState by remember { mutableStateOf<((Int) -> Unit)?>(null) }
-
-        GameBoyMobileBoxContent(
-            onOpenRom = { openRom?.invoke() },
-            onSaveState = { slot -> saveState?.invoke(slot) },
-            onLoadState = { slot -> loadState?.invoke(slot) },
-            onButtonPressed = { memory.pressButton(it) },
-            onButtonReleased = { memory.releaseButton(it) },
-            screen = {
-                GameBoy(
-                    onOpenRomReady = { openRom = it },
-                    onSaveStateReady = { saveState = it },
-                    onLoadStateReady = { loadState = it },
-                )
-            },
-        )
+        Navigator(GameScreen)
     }
 }
 
@@ -81,6 +62,7 @@ fun GameBoyMobileBoxContent(
     onOpenRom: () -> Unit,
     onSaveState: (Int) -> Unit,
     onLoadState: (Int) -> Unit,
+    onOpenLibrary: () -> Unit,
     onButtonPressed: (JoypadButton) -> Unit,
     onButtonReleased: (JoypadButton) -> Unit,
     screen: @Composable () -> Unit,
@@ -122,6 +104,12 @@ fun GameBoyMobileBoxContent(
                                 onOpenRom()
                             }) {
                                 Icon(Icons.Filled.PlayArrow, contentDescription = "Open ROM")
+                            }
+                            SmallFloatingActionButton(onClick = {
+                                fabExpanded = false
+                                onOpenLibrary()
+                            }) {
+                                Icon(Icons.Filled.VideoLibrary, contentDescription = "Library")
                             }
                         }
                     }
@@ -186,6 +174,7 @@ private fun GameBoyMobileBoxPreview() {
         onOpenRom = {},
         onSaveState = {},
         onLoadState = {},
+        onOpenLibrary = {},
         onButtonPressed = {},
         onButtonReleased = {},
         screen = {

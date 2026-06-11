@@ -1,6 +1,7 @@
 package com.eloi.retrolightgb
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.compose.runtime.remember
@@ -18,7 +19,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.TimeSource
 
@@ -84,18 +87,27 @@ fun GameBoy(
         emulationJob.clear()
     }
 
+    suspend fun loadRom(bytes: ByteArray) {
+        apu.stop()
+        stopEmulationLoop()
+        cpu.reset()
+        ppu.reset()
+        memory.load(rom = bytes)
+        apu.reset()
+        apu.start()
+        startEmulationLoop()
+    }
+
     val filePickerLauncher = rememberFilePickerLauncher { bytes ->
-        scope.launch(Dispatchers.Default) {
-            apu.stop()
-            stopEmulationLoop()
+        scope.launch(Dispatchers.Default) { loadRom(bytes) }
+    }
 
-            cpu.reset()
-            ppu.reset()
-            memory.load(rom = bytes)
-            apu.reset()
-            apu.start()
-
-            startEmulationLoop()
+    val romFlow = rememberInstance<MutableSharedFlow<ByteArray>>()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    LaunchedEffect(romFlow) {
+        romFlow.collect { bytes ->
+            withContext(Dispatchers.Default) { loadRom(bytes) }
+            romFlow.resetReplayCache()
         }
     }
 

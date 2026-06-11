@@ -67,6 +67,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.okio)
             implementation(libs.kodein)
+            implementation(libs.voyager.navigator)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
