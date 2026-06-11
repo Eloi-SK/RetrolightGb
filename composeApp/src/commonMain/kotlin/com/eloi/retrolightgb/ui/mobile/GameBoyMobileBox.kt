@@ -1,16 +1,25 @@
 package com.eloi.retrolightgb.ui.mobile
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.FloatingActionButton
@@ -27,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +86,9 @@ fun GameBoyMobileBoxContent(
     screen: @Composable () -> Unit,
 ) {
     MaterialTheme {
+        var fabExpanded by remember { mutableStateOf(false) }
+        val fabRotation by animateFloatAsState(targetValue = if (fabExpanded) 180f else 0f)
+
         Scaffold(
             containerColor = BodyColor,
             floatingActionButton = {
@@ -83,14 +96,41 @@ fun GameBoyMobileBoxContent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    SmallFloatingActionButton(onClick = { onSaveState(0) }) {
-                        Icon(Icons.Filled.Save, contentDescription = "Save state")
+                    AnimatedVisibility(
+                        visible = fabExpanded,
+                        enter = fadeIn() + slideInVertically { it },
+                        exit = fadeOut() + slideOutVertically { it },
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            SmallFloatingActionButton(onClick = {
+                                fabExpanded = false
+                                onSaveState(0)
+                            }) {
+                                Icon(Icons.Filled.Save, contentDescription = "Save state")
+                            }
+                            SmallFloatingActionButton(onClick = {
+                                fabExpanded = false
+                                onLoadState(0)
+                            }) {
+                                Icon(Icons.Filled.Download, contentDescription = "Load state")
+                            }
+                            SmallFloatingActionButton(onClick = {
+                                fabExpanded = false
+                                onOpenRom()
+                            }) {
+                                Icon(Icons.Filled.PlayArrow, contentDescription = "Open ROM")
+                            }
+                        }
                     }
-                    SmallFloatingActionButton(onClick = { onLoadState(0) }) {
-                        Icon(Icons.Filled.Download, contentDescription = "Load state")
-                    }
-                    FloatingActionButton(onClick = onOpenRom) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = "Open ROM")
+                    FloatingActionButton(onClick = { fabExpanded = !fabExpanded }) {
+                        Icon(
+                            if (fabExpanded) Icons.Filled.Close else Icons.Filled.Menu,
+                            contentDescription = if (fabExpanded) "Close menu" else "Open menu",
+                            modifier = Modifier.rotate(fabRotation),
+                        )
                     }
                 }
             },
