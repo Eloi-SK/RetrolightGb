@@ -10,15 +10,26 @@ A Game Boy emulator built with Kotlin Multiplatform and Compose Multiplatform, r
 
 ---
 
+## Screenshots
+
+| Mobile | Mobile | Desktop |
+|:---:|:---:|:---:|
+| ![Game running on Android](docs/screenshot_mobile_game.png) | ![ROM library](docs/screenshot_mobile_library.png) | ![Desktop window](docs/screenshot_desktop.png) |
+| Game running (Android) | ROM Library | Desktop (JVM) |
+
+---
+
 ## Features
 
 - **Full CPU emulation** — Z80-like 8-bit CPU with 200+ instructions and cycle-accurate timing
 - **PPU rendering** — Pixel Processing Unit with all 4 hardware modes (OAM, Transfer, HBlank, VBlank), targeting 59.7 FPS
 - **APU audio** — 4-channel audio synthesis (2 pulse, 1 wave, 1 noise) with frame sequencer
 - **MBC support** — ROM Only, MBC1, MBC2, MBC3 (with RTC), MBC5
-- **Save states** — Battery-backed RAM persistence for supported cartridges
-- **Color palettes** — 5 palettes including Classic DMG, BGB, Grayscale, Game Boy Pocket, and Game Boy Light
-- **Serial terminal** — Debug viewer for in-game serial output
+- **Battery saves** — Persistent battery-backed RAM for supported cartridges (MBC1/MBC2/MBC3/MBC5 with battery)
+- **Save states** — Full machine snapshots (CPU, PPU, APU, Memory) with multiple save slots
+- **ROM library** — Persistent ROM library with add/remove support; tap any entry to launch instantly
+- **Color palettes** — 5 selectable palettes: Classic DMG, Accurate LCD (BGB), Grayscale, Game Boy Pocket, Game Boy Light
+- **Serial terminal** — Debug viewer for in-game serial output (desktop)
 - **Cross-platform UI** — Native file pickers, on-screen joypad (mobile), hardware keyboard support (desktop)
 
 ---
@@ -50,7 +61,7 @@ A Game Boy emulator built with Kotlin Multiplatform and Compose Multiplatform, r
 ### Prerequisites
 
 - Android Studio (Iguana or newer) or IntelliJ IDEA with the Kotlin Multiplatform plugin
-- JDK 21 (JDK 25+ is incompatible with Kotlin 2.2.0)
+- JDK 17–23
 - Xcode (iOS builds only)
 
 ### Clone
@@ -94,7 +105,8 @@ composeApp/src/
 │       ├── cpu/      — Z80 CPU + instruction tables
 │       ├── memory/   — 64 KB address space + MBC implementations
 │       ├── ppu/      — PPU, mode state machine, frame buffer
-│       └── apu/      — 4-channel audio + frame sequencer
+│       ├── apu/      — 4-channel audio + frame sequencer
+│       └── library/  — ROM library (persistence + metadata)
 ├── androidMain/      — MainActivity + Android file picker
 ├── iosMain/          — UIViewController wrapper + iOS file picker
 └── jvmMain/          — Desktop entry point + debug terminal window
@@ -133,6 +145,7 @@ Timing is budgeted at **70,224 T-cycles per frame** (≈ 59.7 FPS), measured wit
 | Kodein DI 7.25.0 | Dependency injection (Memory, CPU, PPU as singletons) |
 | OkIo 3.16.0 | Cross-platform file I/O for ROM loading and saves |
 | kotlinx-coroutines 1.10.2 | Emulation loop + async frame scheduling |
+| Voyager 1.1.0-beta03 | Multiplatform navigation (Game screen ↔ ROM library) |
 
 ---
 
