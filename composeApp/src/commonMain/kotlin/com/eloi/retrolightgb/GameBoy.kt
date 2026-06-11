@@ -1,8 +1,8 @@
 package com.eloi.retrolightgb
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.eloi.retrolightgb.core.apu.Apu
@@ -61,9 +61,12 @@ fun GameBoy(
                         if (timeLeft.isPositive()) {
                             val sleepMs = timeLeft.inWholeMilliseconds - 1
                             if (sleepMs > 0) delay(sleepMs)
+                            nextDeadline += frameDuration
+                        } else {
+                            // Behind schedule (e.g. returning from background) — reset
+                            // instead of accumulating debt that would cause catch-up acceleration
+                            nextDeadline = TimeSource.Monotonic.markNow() + frameDuration
                         }
-                        // advance by fixed duration — delay overshoot is absorbed next frame
-                        nextDeadline += frameDuration
                     }
                 }
             } catch (e: NotImplementedError) {
@@ -118,7 +121,18 @@ fun GameBoy(
         }
     }
 
-    DisposableEffect(Unit) { onDispose { memory.save() } }
+    LifecycleStartEffect(Unit) {
+        if (memory.currentTitle != null) {
+            apu.start()
+            startEmulationLoop()
+        }
+        onStopOrDispose {
+            apu.stop()
+            emulationJob.firstOrNull()?.cancel()
+            emulationJob.clear()
+            memory.save()
+        }
+    }
 
     SideEffect {
         onOpenRomReady(filePickerLauncher::launch)
