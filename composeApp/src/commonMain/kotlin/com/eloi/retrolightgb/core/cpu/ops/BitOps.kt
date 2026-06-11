@@ -161,7 +161,7 @@ internal fun Cpu.bitNumberHl(bit: Int) {
     val bitValue = (memory.readByte(hl).toInt() shr bit) and 0x01
     setFlag(FLAG_H); unsetFlag(FLAG_N)
     if (bitValue == 0) setFlag(FLAG_Z) else unsetFlag(FLAG_Z)
-    pc = (pc + 2u).toUShort(); t += 16; m += 4
+    pc = (pc + 2u).toUShort(); t += 12; m += 3
 }
 
 internal fun Cpu.bitNumberRegister(bit: Int, value: UByte) {
