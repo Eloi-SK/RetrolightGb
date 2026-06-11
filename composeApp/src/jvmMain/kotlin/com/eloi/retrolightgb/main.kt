@@ -93,7 +93,7 @@ fun main() = application {
                 }
                 Menu("View", mnemonic = 'V') {
                     Item("Terminal", mnemonic = 'T', onClick = { showTerminal = true })
-                    Menu("Paleta") {
+                    Menu("Palette") {
                         GameBoyPalette.entries.forEach { p ->
                             CheckboxItem(p.label, checked = palette == p, onCheckedChange = { palette = p })
                         }

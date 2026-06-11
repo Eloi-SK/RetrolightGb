@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.FloatingActionButton
@@ -63,6 +64,7 @@ fun GameBoyMobileBoxContent(
     onSaveState: (Int) -> Unit,
     onLoadState: (Int) -> Unit,
     onOpenLibrary: () -> Unit,
+    onOpenPalette: () -> Unit,
     onButtonPressed: (JoypadButton) -> Unit,
     onButtonReleased: (JoypadButton) -> Unit,
     screen: @Composable () -> Unit,
@@ -110,6 +112,12 @@ fun GameBoyMobileBoxContent(
                                 onOpenLibrary()
                             }) {
                                 Icon(Icons.Filled.VideoLibrary, contentDescription = "Library")
+                            }
+                            SmallFloatingActionButton(onClick = {
+                                fabExpanded = false
+                                onOpenPalette()
+                            }) {
+                                Icon(Icons.Filled.Palette, contentDescription = "Palette")
                             }
                         }
                     }
@@ -175,6 +183,7 @@ private fun GameBoyMobileBoxPreview() {
         onSaveState = {},
         onLoadState = {},
         onOpenLibrary = {},
+        onOpenPalette = {},
         onButtonPressed = {},
         onButtonReleased = {},
         screen = {
