@@ -25,6 +25,7 @@ import com.eloi.retrolightgb.di.di
 import com.eloi.retrolightgb.di.rememberInstance
 import com.eloi.retrolightgb.ui.GameBoyPalette
 import com.eloi.retrolightgb.ui.SerialTerminal
+import com.eloi.retrolightgb.ui.TileViewer
 import java.io.BufferedWriter
 import java.io.FileWriter
 
@@ -45,6 +46,7 @@ fun main() = application {
         var saveState by remember { mutableStateOf<((Int) -> Unit)?>(null) }
         var loadState by remember { mutableStateOf<((Int) -> Unit)?>(null) }
         var showTerminal by remember { mutableStateOf(false) }
+        var showTileViewer by remember { mutableStateOf(false) }
         var palette by remember { mutableStateOf(GameBoyPalette.ClassicDMG) }
         val memory = rememberInstance<Memory>()
 
@@ -96,6 +98,7 @@ fun main() = application {
                 }
                 Menu("View", mnemonic = 'V') {
                     Item("Terminal", mnemonic = 'T', onClick = { showTerminal = true })
+                    Item("Tiles", mnemonic = 'I', onClick = { showTileViewer = true })
                     Menu("Palette") {
                         GameBoyPalette.entries.forEach { p ->
                             CheckboxItem(p.label, checked = palette == p, onCheckedChange = { palette = p })
@@ -118,6 +121,16 @@ fun main() = application {
                 state = rememberWindowState(size = DpSize.Unspecified)
             ) {
                 SerialTerminal(output = memory.serialOutput)
+            }
+        }
+
+        if (showTileViewer) {
+            Window(
+                onCloseRequest = { showTileViewer = false },
+                title = "Tile Viewer",
+                state = rememberWindowState(size = DpSize.Unspecified)
+            ) {
+                TileViewer(memory = memory, palette = palette)
             }
         }
     }
