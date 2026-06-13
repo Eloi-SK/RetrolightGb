@@ -26,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -124,9 +126,15 @@ private fun DPadArm(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(isPressed) {
-        if (isPressed) onButtonPressed(button) else onButtonReleased(button)
+        if (isPressed) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onButtonPressed(button)
+        } else {
+            onButtonReleased(button)
+        }
     }
 
     Box(
@@ -177,9 +185,15 @@ private fun ActionButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(isPressed) {
-        if (isPressed) onButtonPressed() else onButtonReleased()
+        if (isPressed) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onButtonPressed()
+        } else {
+            onButtonReleased()
+        }
     }
 
     Box(
@@ -222,9 +236,15 @@ private fun MenuButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(isPressed) {
-        if (isPressed) onButtonPressed() else onButtonReleased()
+        if (isPressed) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onButtonPressed()
+        } else {
+            onButtonReleased()
+        }
     }
 
     Box(
