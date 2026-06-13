@@ -4,6 +4,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -32,10 +33,11 @@ private const val TRACE_TO_FILE = false
 fun main() = application {
     CompositionLocalProvider(LocalDI provides di) {
         val cpu = rememberInstance<Cpu>()
+        val scope = rememberCoroutineScope()
 
         val traceFileWriter = if (cpu.isDebug && TRACE_TO_FILE) {
             BufferedWriter(FileWriter("trace.log")).also { writer ->
-                cpu.traceWriter = { line -> writer.write(line); writer.newLine() }
+                cpu.startAsyncTracing(scope) { line -> writer.write(line); writer.newLine() }
             }
         } else null
 
@@ -50,6 +52,7 @@ fun main() = application {
             icon = painterResource("icon.svg"),
             onCloseRequest = {
                 memory.save()
+                cpu.stopAsyncTracing()
                 traceFileWriter?.flush()
                 traceFileWriter?.close()
                 if (cpu.isDebug) println("Last instructions:\n${cpu.dumpTrace()}")

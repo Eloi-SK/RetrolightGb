@@ -10,10 +10,10 @@ class Cpu(val memory: Memory, val isDebug: Boolean = false) {
 
     val registers = CpuRegisters()
     private val tracer = CpuTracer(registers, memory)
-    var traceWriter: ((String) -> Unit)?
-        get() = tracer.writer
-        set(v) { tracer.writer = v }
     fun dumpTrace() = tracer.dump()
+    fun startAsyncTracing(scope: kotlinx.coroutines.CoroutineScope, writer: (String) -> Unit) =
+        tracer.startAsyncWriter(scope, writer)
+    fun stopAsyncTracing() = tracer.stopAsyncWriter()
 
     var a: UByte get() = registers.a; set(v) { registers.a = v }
     var b: UByte get() = registers.b; set(v) { registers.b = v }
