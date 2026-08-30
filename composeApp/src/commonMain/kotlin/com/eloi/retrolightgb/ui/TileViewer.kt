@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.eloi.retrolightgb.core.memory.Memory
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val TILE_COUNT = 384
 private const val TILES_PER_ROW = 16
